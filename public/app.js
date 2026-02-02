@@ -678,4 +678,22 @@ if (user) {
     if (userDisplay) userDisplay.innerText = `Hello, ${user.username}`;
 }
 
+// User Dropdown Logic
+const userMenuBtn = document.getElementById('user-menu-btn');
+const userDropdown = document.getElementById('user-dropdown');
+
+if (userMenuBtn) {
+    userMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        userDropdown.classList.toggle('show');
+    });
+
+    // Close dropdown when clicking outside
+    window.addEventListener('click', (e) => {
+        if (!userMenuBtn.contains(e.target) && !userDropdown.contains(e.target)) {
+            userDropdown.classList.remove('show');
+        }
+    });
+}
+
 form.addEventListener('submit', addTransaction)
