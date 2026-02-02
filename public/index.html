@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense Tracker</title>
+    <!-- Bootstrap CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <div class="container-fluid main-container">
+        <header>
+            <div class="d-flex justify-content-between align-items-center">
+                <button id="toggle-sidebar" class="menu-btn"><i class="fa-solid fa-bars"></i></button>
+                <div class="header-right">
+                    <span id="user-display" class="text-white me-3" style="font-size: 0.9rem;"></span>
+                    <button onclick="logout()" class="btn btn-sm btn-outline-light">Logout</button>
+                </div>
+            </div>
+            <h1><i class="fa-solid fa-wallet"></i> Wallet</h1>
+            <p>Track your finance with style</p>
+        </header>
+
+        <script src="js/auth.js"></script>
+        <script>checkAuth();</script>
+
+        <aside id="sidebar" class="sidebar">
+            <div class="sidebar-header">
+                <h2>Filter</h2>
+                <button id="close-sidebar" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="sidebar-content">
+                <div class="filter-group">
+                    <h3>Year</h3>
+                    <ul id="year-list" class="filter-list">
+                        <!-- Years will be populated by JS -->
+                    </ul>
+                </div>
+                <div class="filter-group">
+                    <h3>Month</h3>
+                    <ul id="month-list" class="filter-list">
+                        <!-- Months populated by JS, or static list -->
+                        <li data-month="lifetime" class="special-option text-warning" style="border-color: #ffb74d;">
+                            Lifetime Record</li>
+                        <li data-month="all" class="special-option">Entire Year</li>
+                        <li data-month="0">January</li>
+                        <li data-month="1">February</li>
+                        <li data-month="2">March</li>
+                        <li data-month="3">April</li>
+                        <li data-month="4">May</li>
+                        <li data-month="5">June</li>
+                        <li data-month="6">July</li>
+                        <li data-month="7">August</li>
+                        <li data-month="8">September</li>
+                        <li data-month="9">October</li>
+                        <li data-month="10">November</li>
+                        <li data-month="11">December</li>
+                    </ul>
+                </div>
+                <button id="open-bin-btn" class="bin-btn"><i class="fa-solid fa-trash-arrow-up"></i> Deleted
+                    Logs</button>
+            </div>
+        </aside>
+
+        <div class="overlay" id="overlay"></div>
+
+        <!-- Recycle Bin Modal -->
+        <div class="modal-overlay" id="bin-modal">
+            <div class="modal-container">
+                <div class="modal-header">
+                    <h2>Deleted Logs</h2>
+                    <button class="close-modal-btn" id="close-bin-btn"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="modal-body">
+                    <ul id="bin-list" class="list">
+                        <!-- Deleted items will appear here -->
+                    </ul>
+                    <p id="bin-empty-msg" class="empty-msg">No deleted logs</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- NEW ANALYTICS DASHBOARD -->
+        <section class="analytics-panel mb-5">
+            <!-- 1. Quick Stats Row -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-6 col-lg-3">
+                    <div class="card stat-card balance text-center h-100">
+                        <div class="card-body">
+                            <h6>Total Balance</h6>
+                            <h2 id="total-balance">₹0.00</h2>
+                            <span class="period">Lifetime Wallet</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <div class="card stat-card income text-center h-100">
+                        <div class="card-body">
+                            <h6>Income</h6>
+                            <h2 id="total-income">₹0.00</h2>
+                            <span class="period">This Period</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <div class="card stat-card expense text-center h-100">
+                        <div class="card-body">
+                            <h6>Expense</h6>
+                            <h2 id="total-expense">₹0.00</h2>
+                            <span class="period">This Period</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Extra Stat: Savings Rate -->
+                <div class="col-md-6 col-lg-3">
+                    <div class="card stat-card savings text-center h-100">
+                        <div class="card-body">
+                            <h6>Savings Rate</h6>
+                            <h2 id="savings-rate">0%</h2>
+                            <div class="progress mt-2" style="height: 6px;">
+                                <div id="savings-progress" class="progress-bar bg-success" role="progressbar"
+                                    style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Charts Row -->
+            <div class="row g-3 mb-4">
+                <div class="col-lg-8">
+                    <div class="card chart-card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title mb-3">Income vs Expense</h5>
+                            <div class="chart-wrapper">
+                                <canvas id="incomeExpenseChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card chart-card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title mb-3">Expense Breakdown</h5>
+                            <div class="chart-wrapper">
+                                <canvas id="expenseChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Widgets Row -->
+            <div class="row g-3">
+                <!-- Mini Calendar -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="card widget-card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title mb-3">Calendar</h5>
+                            <div id="mini-calendar" class="calendar-grid">
+                                <!-- JS Generated -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Budget Progress -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="card widget-card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title mb-3">Budget Health</h5>
+                            <div class="budget-item mb-3">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span>Spent vs Income</span>
+                                    <span id="budget-percent">0%</span>
+                                </div>
+                                <div class="progress" style="height: 10px;">
+                                    <div id="budget-progress" class="progress-bar bg-warning" role="progressbar"
+                                        style="width: 0%"></div>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between text-muted small mt-3">
+                                <div>
+                                    <span>Highest Expense:</span>
+                                    <strong id="highest-expense" class="d-block text-white">₹0</strong>
+                                </div>
+                                <div>
+                                    <span>Avg Spending:</span>
+                                    <strong id="avg-expense" class="d-block text-white">₹0</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Transactions Summary -->
+                <div class="col-md-12 col-lg-4">
+                    <div class="card widget-card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title mb-3">Recent Activity</h5>
+                            <ul id="recent-list" class="list-unstyled recent-activity">
+                                <li class="text-muted small">No recent activity</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="main-content">
+            <div class="form-container">
+                <h2>Add Transaction</h2>
+                <form id="transaction-form">
+                    <div class="form-control">
+                        <label for="text">Description</label>
+                        <input type="text" id="text" placeholder="e.g. Salary, Rent, Coffee..." required />
+                        <span class="focus-border"></span>
+                    </div>
+
+                    <div class="form-control">
+                        <label for="category">Category</label>
+                        <select id="category" class="custom-select">
+                            <option value="General">General</option>
+                            <option value="Food">Food & Dining</option>
+                            <option value="Transport">Transportation</option>
+                            <option value="Shopping">Shopping</option>
+                            <option value="Bills">Bills & Utilities</option>
+                            <option value="Entertainment">Entertainment</option>
+                            <option value="Health">Health & Fitness</option>
+                            <option value="Investment">Investment</option>
+                            <option value="Salary">Salary/Income</option>
+                        </select>
+                    </div>
+
+                    <div class="form-control">
+                        <label>Type</label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="type" value="income" checked>
+                                <span class="radio-btn income-btn">Income</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="type" value="expense">
+                                <span class="radio-btn expense-btn">Expense</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-control">
+                        <label for="date">Date</label>
+                        <input type="date" id="date" required />
+                    </div>
+
+                    <div class="form-control">
+                        <label for="amount">Amount</label>
+                        <input type="number" id="amount" placeholder="Enter amount..." required min="0.01"
+                            step="0.01" />
+                        <span class="focus-border"></span>
+                    </div>
+                    <button class="btn">Add Transaction</button>
+                </form>
+            </div>
+
+            <div class="history-container">
+                <h2>History</h2>
+                <ul id="list" class="list">
+                    <!-- Transactions will be added here dynamically -->
+                </ul>
+                <button id="delete-all-btn" class="btn btn-outline-danger w-100 mt-3">
+                    <i class="fa-solid fa-trash-can"></i> Delete All
+                </button>
+            </div>
+        </section>
+        <div class="overlay" id="overlay"></div>
+
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script src="app.js"></script>
+</body>
+
+</html>
