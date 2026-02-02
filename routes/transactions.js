@@ -1,4 +1,9 @@
+const express = require('express');
+const router = express.Router();
+
+const Transaction = require('../models/Transaction');
 const { protect } = require('../middleware/authMiddleware');
+
 
 // @desc    Get all transactions (active)
 // @route   GET /api/transactions
