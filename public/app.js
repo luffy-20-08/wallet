@@ -85,32 +85,12 @@ closeBtn.addEventListener('click', closeSidebar);
 overlay.addEventListener('click', closeSidebar);
 
 // Filter Logic
-const dashboardDateInput = document.getElementById('dashboard-date');
-const clearDateBtn = document.getElementById('clear-date-btn');
 let selectedDashboardDate = null;
 
-// Dashboard Date Listeners
-if (dashboardDateInput) {
-    dashboardDateInput.addEventListener('change', (e) => {
-        if (e.target.value) {
-            selectedDashboardDate = e.target.value; // YYYY-MM-DD
-            // Reset Sidebar Logic visually or just override?
-            // We'll let this override the filter logic
-            updateValues();
-        } else {
-            selectedDashboardDate = null;
-            updateValues();
-        }
-    });
-}
+// Dashboard Date Input Removed
+// Filter is now handled via Interactive Calendar
+// Filter is now handled via Interactive Calendar
 
-if (clearDateBtn) {
-    clearDateBtn.addEventListener('click', () => {
-        selectedDashboardDate = null;
-        if (dashboardDateInput) dashboardDateInput.value = '';
-        updateValues();
-    });
-}
 
 function renderYears() {
     yearList.innerHTML = '';
@@ -694,9 +674,39 @@ function renderCalendar() {
     for (let i = 1; i <= daysInMonth; i++) {
         const div = document.createElement('div');
         div.className = 'calendar-day';
-        if (i === now.getDate()) {
+
+        // Check if this date is today
+        if (i === now.getDate() && month === now.getMonth() && year === now.getFullYear()) {
+            // We can keep 'today' class for visual "Today is X", separate from "Selected"
             div.classList.add('today');
         }
+
+        // Calculate YYYY-MM-DD for this cell
+        // Month is 0-indexed in JS Date, but we need 1-12 for string, 2-digit
+        const currentM = String(month + 1).padStart(2, '0');
+        const currentD = String(i).padStart(2, '0');
+        const dateStr = `${year}-${currentM}-${currentD}`;
+
+        // Check active selection
+        if (selectedDashboardDate === dateStr) {
+            div.classList.add('active');
+        }
+
+        // Interaction
+        div.addEventListener('click', () => {
+            if (selectedDashboardDate === dateStr) {
+                // Toggle Off
+                selectedDashboardDate = null;
+            } else {
+                // Select
+                selectedDashboardDate = dateStr;
+            }
+            // Update UI
+            updateValues();
+            // Re-render calendar to update active class visual
+            renderCalendar();
+        });
+
         div.innerText = i;
         calendarEl.appendChild(div);
     }
