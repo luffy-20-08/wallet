@@ -304,7 +304,12 @@ function addTransactionDOM(transaction) {
     const item = document.createElement('li');
     item.classList.add(itemClass);
     item.innerHTML = `
-    ${transaction.text} <span>${sign}${Math.abs(transaction.amount)}</span> <button class="delete-btn" onclick="removeTransaction('${transaction._id}')"><i class="fa-solid fa-trash"></i></button>
+    <div>
+        <span class="d-block">${transaction.text}</span>
+        <small class="text-muted" style="font-size: 0.75rem;">${tDate.toLocaleDateString()}</small>
+    </div>
+    <span class="fw-bold">${sign}${Math.abs(transaction.amount)}</span> 
+    <button class="delete-btn" onclick="removeTransaction('${transaction._id}')"><i class="fa-solid fa-trash"></i></button>
   `;
 
     list.appendChild(item);

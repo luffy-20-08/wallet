@@ -800,10 +800,15 @@ h2 {
     }
 
     /* Ensure dates in list are readable */
-    .list li small {
-        color: #bbb !important;
-        /* Lighter grey */
+    .list li small,
+    .recent-activity small {
+        color: rgba(255, 255, 255, 0.85) !important;
+        /* High contrast for mobile */
         font-weight: 500;
+        font-size: 0.85rem;
+        /* +1px approx from default */
+        display: block;
+        margin-top: 2px;
     }
 
     /* Adjust progress bar in savings card */
