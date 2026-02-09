@@ -19,9 +19,14 @@
         <header>
             <div class="d-flex justify-content-between align-items-center">
                 <button id="toggle-sidebar" class="menu-btn"><i class="fa-solid fa-bars"></i></button>
-                <div class="header-right">
-                    <span id="user-display" class="text-white me-3" style="font-size: 0.9rem;"></span>
-                    <button onclick="logout()" class="btn btn-sm btn-outline-light">Logout</button>
+                <div class="header-right dropdown">
+                    <div class="user-menu-btn" id="user-menu-btn">
+                        <span id="user-display" class="text-white me-2" style="font-size: 0.9rem;"></span>
+                        <i class="fa-solid fa-chevron-down text-white" style="font-size: 0.8rem;"></i>
+                    </div>
+                    <div class="dropdown-content" id="user-dropdown">
+                        <a href="#" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+                    </div>
                 </div>
             </div>
             <h1><i class="fa-solid fa-wallet"></i> Wallet</h1>
@@ -87,11 +92,25 @@
             </div>
         </div>
 
+        <!-- Dashboard Controls -->
+        <div class="row mb-4">
+            <div class="col-12 d-flex justify-content-between align-items-center">
+                <h5 class="text-muted m-0">Overview</h5>
+                <div class="date-filter-container d-flex align-items-center gap-2">
+                    <input type="date" id="dashboard-date" class="form-control form-control-sm"
+                        style="width: auto; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2);">
+                    <button id="clear-date-btn" class="btn btn-sm btn-outline-secondary"
+                        style="margin: 0; padding: 4px 10px;" title="Clear Date Filter"><i
+                            class="fa-solid fa-xmark"></i></button>
+                </div>
+            </div>
+        </div>
+
         <!-- NEW ANALYTICS DASHBOARD -->
         <section class="analytics-panel mb-5">
             <!-- 1. Quick Stats Row -->
             <div class="row g-3 mb-4">
-                <div class="col-md-6 col-lg-3">
+                <div class="col-6 col-md-6 col-lg-3">
                     <div class="card stat-card balance text-center h-100">
                         <div class="card-body">
                             <h6>Total Balance</h6>
@@ -100,7 +119,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-6 col-lg-3">
+                <div class="col-6 col-md-6 col-lg-3">
                     <div class="card stat-card income text-center h-100">
                         <div class="card-body">
                             <h6>Income</h6>
@@ -109,7 +128,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-6 col-lg-3">
+                <div class="col-6 col-md-6 col-lg-3">
                     <div class="card stat-card expense text-center h-100">
                         <div class="card-body">
                             <h6>Expense</h6>
@@ -119,7 +138,7 @@
                     </div>
                 </div>
                 <!-- Extra Stat: Savings Rate -->
-                <div class="col-md-6 col-lg-3">
+                <div class="col-6 col-md-6 col-lg-3">
                     <div class="card stat-card savings text-center h-100">
                         <div class="card-body">
                             <h6>Savings Rate</h6>

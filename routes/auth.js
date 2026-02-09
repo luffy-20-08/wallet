@@ -63,8 +63,11 @@ router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        // Check for user email
-        const user = await User.findOne({ email }).select('+password');
+        // Check for user by email OR username
+        // We accept 'email' field from frontend but treat it as an identifier
+        const user = await User.findOne({
+            $or: [{ email: email }, { username: email }]
+        }).select('+password');
 
         if (user && (await bcrypt.compare(password, user.password))) {
             res.json({

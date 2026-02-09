@@ -85,6 +85,33 @@ closeBtn.addEventListener('click', closeSidebar);
 overlay.addEventListener('click', closeSidebar);
 
 // Filter Logic
+const dashboardDateInput = document.getElementById('dashboard-date');
+const clearDateBtn = document.getElementById('clear-date-btn');
+let selectedDashboardDate = null;
+
+// Dashboard Date Listeners
+if (dashboardDateInput) {
+    dashboardDateInput.addEventListener('change', (e) => {
+        if (e.target.value) {
+            selectedDashboardDate = e.target.value; // YYYY-MM-DD
+            // Reset Sidebar Logic visually or just override?
+            // We'll let this override the filter logic
+            updateValues();
+        } else {
+            selectedDashboardDate = null;
+            updateValues();
+        }
+    });
+}
+
+if (clearDateBtn) {
+    clearDateBtn.addEventListener('click', () => {
+        selectedDashboardDate = null;
+        if (dashboardDateInput) dashboardDateInput.value = '';
+        updateValues();
+    });
+}
+
 function renderYears() {
     yearList.innerHTML = '';
     const currentYear = new Date().getFullYear();
@@ -97,6 +124,9 @@ function renderYears() {
         if (y === selectedYear) li.classList.add('active');
         li.addEventListener('click', () => {
             selectedYear = y;
+            // Clear specific date if year changes to avoid confusion?
+            // selectedDashboardDate = null;
+            // dashboardDateInput.value = '';
             renderYears();
             syncDateInput();
             updateValues();
@@ -128,6 +158,10 @@ function initMonthSelection() {
             } else {
                 selectedMonth = val === 'all' ? 'all' : parseInt(val);
             }
+
+            // Clear Specific Date?
+            // selectedDashboardDate = null;
+            // dashboardDateInput.value = '';
 
             initMonthSelection();
             syncDateInput();
@@ -222,6 +256,10 @@ async function addTransaction(e) {
     const [y, m, d] = dateInput.value.split('-').map(Number);
     const selectedDate = new Date(y, m - 1, d); // Local Midnight
 
+    // Handle "Default to current date" if somehow empty (though validation prevents this)
+    // But user requirement says "Default to the current date if no date is provided."
+    // Since we require it, we are safe.
+
     console.log("Frontend selected string:", dateInput.value);
     console.log("Frontend constructed date:", selectedDate.toString());
     console.log("Sending ISO:", selectedDate.toISOString());
@@ -269,7 +307,13 @@ async function addTransaction(e) {
 function addTransactionDOM(transaction) {
     const tDate = new Date(transaction.date || transaction.createdAt);
 
-    if (selectedMonth !== 'lifetime') {
+    if (selectedDashboardDate) {
+        const tY = tDate.getFullYear();
+        const tM = String(tDate.getMonth() + 1).padStart(2, '0');
+        const tD = String(tDate.getDate()).padStart(2, '0');
+        const tDateStr = `${tY}-${tM}-${tD}`;
+        if (tDateStr !== selectedDashboardDate) return;
+    } else if (selectedMonth !== 'lifetime') {
         if (tDate.getFullYear() !== selectedYear) return;
         if (selectedMonth !== 'all' && tDate.getMonth() !== selectedMonth) return;
     }
@@ -293,12 +337,51 @@ function updateValues() {
     let periodText = '';
 
     // 1. FILTER LOGIC
-    if (selectedMonth === 'lifetime') {
+    if (selectedDashboardDate) {
+        // Precise Date Filter
+        filteredTransactions = transactions.filter(transaction => {
+            const tDate = new Date(transaction.date || transaction.createdAt);
+            // Convert tDate to YYYY-MM-DD string roughly or compare parts
+            // tDate is ISO, let's look at Local segments if we want local date matching
+            // or just slice ISO if stored as UTC
+            // The stored 'date' is ISO from backend.
+            // Let's use simple string comparison on the ISO set at midnight? 
+            // Or better: valid matching.
+
+            // To be safe with timezones, let's match the "Date" part of the ISO string 
+            // IF we stored it as ISO-at-midnight-local-time-concept.
+            // In addTransaction we sent: selectedDate.toISOString().
+            // If selectedDate was "2023-05-05 00:00:00 Local", ISO might be "2023-05-04T18:30:00Z".
+            // comparing strings like that is tricky.
+
+            // Backend stores full Date object. 
+            // Robust way: compare Year, Month, Date.
+            // But we need to know "Which Day" the USER thinks it is.
+            // The user selected "YYYY-MM-DD" from input.
+            // We should match that against the transaction's Local YYYY-MM-DD?
+            // "Add Date Field to Transactions... Default to current... Show transaction dates".
+
+            // Logic:
+            const filterDate = new Date(selectedDashboardDate); // midnight UTC usually from input string? No, input value is YYYY-MM-DD
+            // input value "2023-02-05" parsed as Date is Date(2023, 1, 5) UTC usually.
+
+            // Let's rely on string check of the input vs the YYYY-MM-DD format of the transaction DATE object
+            const tY = tDate.getFullYear();
+            const tM = String(tDate.getMonth() + 1).padStart(2, '0');
+            const tD = String(tDate.getDate()).padStart(2, '0');
+            const tDateStr = `${tY}-${tM}-${tD}`;
+
+            return tDateStr === selectedDashboardDate;
+        });
+
+        const dObj = new Date(selectedDashboardDate);
+        periodText = dObj.toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+
+    } else if (selectedMonth === 'lifetime') {
         // Lifetime Mode: Show ALL transactions
         filteredTransactions = transactions;
         periodText = 'Lifetime Record';
     } else {
-        // Year/Month Logic
         // Year/Month Logic
         filteredTransactions = transactions.filter(transaction => {
             const tDate = new Date(transaction.date || transaction.createdAt);
@@ -676,6 +759,24 @@ const user = JSON.parse(localStorage.getItem('user'));
 if (user) {
     const userDisplay = document.getElementById('user-display');
     if (userDisplay) userDisplay.innerText = `Hello, ${user.username}`;
+}
+
+// User Dropdown Logic
+const userMenuBtn = document.getElementById('user-menu-btn');
+const userDropdown = document.getElementById('user-dropdown');
+
+if (userMenuBtn) {
+    userMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        userDropdown.classList.toggle('show');
+    });
+
+    // Close dropdown when clicking outside
+    window.addEventListener('click', (e) => {
+        if (!userMenuBtn.contains(e.target) && !userDropdown.contains(e.target)) {
+            userDropdown.classList.remove('show');
+        }
+    });
 }
 
 form.addEventListener('submit', addTransaction)

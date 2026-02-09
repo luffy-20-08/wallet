@@ -10,7 +10,39 @@ const { protect } = require('../middleware/authMiddleware');
 // @access  Private
 router.get('/', protect, async (req, res) => {
     try {
-        const transactions = await Transaction.find({ user: req.user.id, isDeleted: false });
+        let query = { user: req.user.id, isDeleted: false };
+
+        // Date Filter (YYYY-MM-DD from query)
+        if (req.query.date) {
+            const parts = req.query.date.split('-');
+            if (parts.length === 3) {
+                const y = parseInt(parts[0]);
+                const m = parseInt(parts[1]) - 1;
+                const d = parseInt(parts[2]);
+
+                // Create range for that day (Local or UTC? Ideally we store ISO so we should query range that covers "that day")
+                // Assuming client sends YYYY-MM-DD representing their local day.
+                // But DB has ISOs. 
+                // Simple approach: Match the 'date' field range.
+                // However, timezone issues are tricky here.
+                // If we rely on the `month` and `year` fields stored, we can also add a `day` field?
+                // Or just use the frontend filtering which we already did?
+
+                // User requirement: "Ensure transactions are filtered per user and per selected date." in Backend.
+                // Let's implement a range query for 00:00 to 23:59:59 of that date in UTC?
+                // The safest is often to interpret the input date as the start of the day.
+
+                const start = new Date(y, m, d);
+                const end = new Date(y, m, d, 23, 59, 59, 999);
+
+                query.date = {
+                    $gte: start,
+                    $lte: end
+                };
+            }
+        }
+
+        const transactions = await Transaction.find(query);
         return res.status(200).json({
             success: true,
             count: transactions.length,
