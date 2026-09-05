@@ -5,8 +5,10 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { protect } = require('../middleware/authMiddleware');
 
+const JWT_SECRET = process.env.JWT_SECRET || 'wallet_fallback_secret_key';
+
 const generateToken = (id) => {
-    return jwt.sign({ id }, process.env.JWT_SECRET, {
+    return jwt.sign({ id }, JWT_SECRET, {
         expiresIn: '30d'
     });
 };
