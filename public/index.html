@@ -4,290 +4,437 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Expense Tracker</title>
-    <!-- Bootstrap CDN -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <title>Wallet — Personal Finance & Expense Tracker</title>
+    <!-- Modern Font: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
-    <div class="container-fluid main-container">
-        <header>
-            <div class="d-flex justify-content-between align-items-center">
-                <button id="toggle-sidebar" class="menu-btn"><i class="fa-solid fa-bars"></i></button>
-                <div class="header-right dropdown">
-                    <div class="user-menu-btn" id="user-menu-btn">
-                        <span id="user-display" class="text-white me-2" style="font-size: 0.9rem;"></span>
-                        <i class="fa-solid fa-chevron-down text-white" style="font-size: 0.8rem;"></i>
+    <!-- Auth Verification -->
+    <script src="js/auth.js"></script>
+    <script>checkAuth();</script>
+
+    <div class="dashboard-wrapper">
+        <!-- ================= TOP HEADER ================= -->
+        <header class="app-header">
+            <div class="header-left">
+                <button id="toggle-sidebar" class="menu-btn" title="Filter & Menu" aria-label="Open Filter Sidebar">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <div class="brand-section">
+                    <div class="brand-icon">
+                        <i class="fa-solid fa-wallet"></i>
                     </div>
-                    <div class="dropdown-content" id="user-dropdown">
-                        <a href="#" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+                    <div class="brand-text">
+                        <h1>Wallet</h1>
+                        <p>Track your finances with style</p>
                     </div>
                 </div>
             </div>
-            <h1><i class="fa-solid fa-wallet"></i> Wallet</h1>
-            <p>Track your finance with style</p>
+
+            <div class="header-right">
+                <div class="user-profile-badge" id="user-menu-btn" tabindex="0" role="button" aria-haspopup="true">
+                    <div class="user-avatar">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                    <span id="user-display" class="user-name">Hello, User</span>
+                    <i class="fa-solid fa-chevron-down user-chevron"></i>
+                </div>
+                <div class="profile-dropdown-menu" id="user-dropdown">
+                    <a href="#" onclick="logout()" class="dropdown-item-link">
+                        <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
+                    </a>
+                </div>
+            </div>
         </header>
 
-        <script src="js/auth.js"></script>
-        <script>checkAuth();</script>
-
-        <aside id="sidebar" class="sidebar">
-            <div class="sidebar-header">
-                <h2>Filter</h2>
-                <button id="close-sidebar" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+        <!-- ================= 1. FINANCIAL SUMMARY CARDS ================= -->
+        <section class="summary-cards-grid" aria-label="Financial Summary">
+            <!-- Total Balance -->
+            <div class="fintech-card summary-card card-balance" id="card-filter-balance" title="Click to view all transactions">
+                <div class="summary-card-top">
+                    <span class="summary-label">Total Balance</span>
+                    <div class="summary-icon">
+                        <i class="fa-solid fa-vault"></i>
+                    </div>
+                </div>
+                <div class="summary-value" id="total-balance">₹0.00</div>
+                <div class="summary-meta">
+                    <span class="summary-badge period">Lifetime Wallet</span>
+                    <span class="text-muted"><i class="fa-solid fa-chart-line"></i> Overall</span>
+                </div>
             </div>
-            <div class="sidebar-content">
-                <div class="filter-group">
-                    <h3>Year</h3>
-                    <ul id="year-list" class="filter-list">
-                        <!-- Years will be populated by JS -->
+
+            <!-- Income -->
+            <div class="fintech-card summary-card card-income" id="card-filter-income" title="Click to filter Income in History">
+                <div class="summary-card-top">
+                    <span class="summary-label">Income</span>
+                    <div class="summary-icon">
+                        <i class="fa-solid fa-arrow-down-left"></i>
+                    </div>
+                </div>
+                <div class="summary-value" id="total-income">₹0.00</div>
+                <div class="summary-meta">
+                    <span class="summary-badge period">This Period</span>
+                    <span style="color: var(--income-teal);"><i class="fa-solid fa-arrow-trend-up"></i> Received</span>
+                </div>
+            </div>
+
+            <!-- Expense -->
+            <div class="fintech-card summary-card card-expense" id="card-filter-expense" title="Click to filter Expenses in History">
+                <div class="summary-card-top">
+                    <span class="summary-label">Expense</span>
+                    <div class="summary-icon">
+                        <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                    </div>
+                </div>
+                <div class="summary-value" id="total-expense">₹0.00</div>
+                <div class="summary-meta">
+                    <span class="summary-badge period">This Period</span>
+                    <span style="color: var(--expense-coral);"><i class="fa-solid fa-arrow-trend-down"></i> Spent</span>
+                </div>
+            </div>
+
+            <!-- Savings Rate -->
+            <div class="fintech-card summary-card card-savings" title="Savings relative to Income">
+                <div class="summary-card-top">
+                    <span class="summary-label">Savings Rate</span>
+                    <div class="summary-icon">
+                        <i class="fa-solid fa-piggy-bank"></i>
+                    </div>
+                </div>
+                <div class="summary-value" id="savings-rate">0%</div>
+                <div class="savings-progress-track">
+                    <div id="savings-progress" class="savings-progress-fill" style="width: 0%;"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= 2. MAIN ANALYTICS ROW ================= -->
+        <section class="analytics-grid">
+            <!-- Left: Income vs Expense Trend -->
+            <div class="fintech-card">
+                <div class="card-header-clean">
+                    <h3 class="card-title-clean">
+                        <i class="fa-solid fa-chart-simple"></i> Income vs Expense
+                    </h3>
+                    <div class="chart-header-actions" id="chart-time-selectors">
+                        <button type="button" class="time-pill-btn active" data-range="ALL">ALL</button>
+                        <button type="button" class="time-pill-btn" data-range="7D">7D</button>
+                        <button type="button" class="time-pill-btn" data-range="1M">1M</button>
+                        <button type="button" class="time-pill-btn" data-range="3M">3M</button>
+                        <button type="button" class="time-pill-btn" data-range="6M">6M</button>
+                        <button type="button" class="time-pill-btn" data-range="1Y">1Y</button>
+                    </div>
+                </div>
+
+                <div class="chart-container-box">
+                    <canvas id="incomeExpenseChart"></canvas>
+                    <div id="chart-empty-state" class="empty-state-card" style="display: none; height: 100%;">
+                        <div class="empty-icon-wrap"><i class="fa-solid fa-chart-column"></i></div>
+                        <div class="empty-state-title">Start tracking your money</div>
+                        <div class="empty-state-desc">Add an income or expense to see your financial trends.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Expense Breakdown Donut -->
+            <div class="fintech-card">
+                <div class="card-header-clean">
+                    <h3 class="card-title-clean">
+                        <i class="fa-solid fa-chart-pie"></i> Expense Breakdown
+                    </h3>
+                </div>
+
+                <div class="donut-layout">
+                    <div class="donut-chart-box">
+                        <canvas id="expenseChart"></canvas>
+                        <div class="donut-center-stat" id="donut-center-stat">
+                            <div class="donut-center-val" id="donut-total-spent">₹0</div>
+                            <div class="donut-center-sub">Spent</div>
+                        </div>
+                    </div>
+
+                    <ul class="category-legend-list" id="category-legend">
+                        <!-- JS populated with category rows -->
                     </ul>
-                </div>
-                <div class="filter-group">
-                    <h3>Month</h3>
-                    <ul id="month-list" class="filter-list">
-                        <!-- Months populated by JS, or static list -->
-                        <li data-month="lifetime" class="special-option text-warning" style="border-color: #ffb74d;">
-                            Lifetime Record</li>
-                        <li data-month="all" class="special-option">Entire Year</li>
-                        <li data-month="0">January</li>
-                        <li data-month="1">February</li>
-                        <li data-month="2">March</li>
-                        <li data-month="3">April</li>
-                        <li data-month="4">May</li>
-                        <li data-month="5">June</li>
-                        <li data-month="6">July</li>
-                        <li data-month="7">August</li>
-                        <li data-month="8">September</li>
-                        <li data-month="9">October</li>
-                        <li data-month="10">November</li>
-                        <li data-month="11">December</li>
-                    </ul>
-                </div>
-                <button id="open-bin-btn" class="bin-btn"><i class="fa-solid fa-trash-arrow-up"></i> Deleted
-                    Logs</button>
-            </div>
-        </aside>
 
-        <div class="overlay" id="overlay"></div>
-
-        <!-- Recycle Bin Modal -->
-        <div class="modal-overlay" id="bin-modal">
-            <div class="modal-container">
-                <div class="modal-header">
-                    <h2>Deleted Logs</h2>
-                    <button class="close-modal-btn" id="close-bin-btn"><i class="fa-solid fa-xmark"></i></button>
-                </div>
-                <div class="modal-body">
-                    <ul id="bin-list" class="list">
-                        <!-- Deleted items will appear here -->
-                    </ul>
-                    <p id="bin-empty-msg" class="empty-msg">No deleted logs</p>
-                </div>
-            </div>
-        </div>
-
-
-
-        <!-- NEW ANALYTICS DASHBOARD -->
-        <section class="analytics-panel mb-5">
-            <!-- 1. Quick Stats Row -->
-            <div class="row g-3 mb-4">
-                <div class="col-6 col-md-6 col-lg-3">
-                    <div class="card stat-card balance text-center h-100">
-                        <div class="card-body">
-                            <h6>Total Balance</h6>
-                            <h2 id="total-balance">₹0.00</h2>
-                            <span class="period">Lifetime Wallet</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-6 col-md-6 col-lg-3">
-                    <div class="card stat-card income text-center h-100">
-                        <div class="card-body">
-                            <h6>Income</h6>
-                            <h2 id="total-income">₹0.00</h2>
-                            <span class="period">This Period</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-6 col-md-6 col-lg-3">
-                    <div class="card stat-card expense text-center h-100">
-                        <div class="card-body">
-                            <h6>Expense</h6>
-                            <h2 id="total-expense">₹0.00</h2>
-                            <span class="period">This Period</span>
-                        </div>
-                    </div>
-                </div>
-                <!-- Extra Stat: Savings Rate -->
-                <div class="col-6 col-md-6 col-lg-3">
-                    <div class="card stat-card savings text-center h-100">
-                        <div class="card-body">
-                            <h6>Savings Rate</h6>
-                            <h2 id="savings-rate">0%</h2>
-                            <div class="progress mt-2" style="height: 6px;">
-                                <div id="savings-progress" class="progress-bar bg-success" role="progressbar"
-                                    style="width: 0%"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 2. Charts Row -->
-            <div class="row g-3 mb-4">
-                <div class="col-lg-8">
-                    <div class="card chart-card h-100">
-                        <div class="card-body">
-                            <h5 class="card-title mb-3">Income vs Expense</h5>
-                            <div class="chart-wrapper">
-                                <canvas id="incomeExpenseChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-4">
-                    <div class="card chart-card h-100">
-                        <div class="card-body">
-                            <h5 class="card-title mb-3">Expense Breakdown</h5>
-                            <div class="chart-wrapper">
-                                <canvas id="expenseChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 3. Widgets Row -->
-            <div class="row g-3">
-                <!-- Mini Calendar -->
-                <div class="col-md-6 col-lg-4">
-                    <div class="card widget-card h-100">
-                        <div class="card-body">
-                            <h5 class="card-title mb-3">Calendar</h5>
-                            <div id="mini-calendar" class="calendar-grid">
-                                <!-- JS Generated -->
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Budget Progress -->
-                <div class="col-md-6 col-lg-4">
-                    <div class="card widget-card h-100">
-                        <div class="card-body">
-                            <h5 class="card-title mb-3">Budget Health</h5>
-                            <div class="budget-item mb-3">
-                                <div class="d-flex justify-content-between mb-1">
-                                    <span>Spent vs Income</span>
-                                    <span id="budget-percent">0%</span>
-                                </div>
-                                <div class="progress" style="height: 10px;">
-                                    <div id="budget-progress" class="progress-bar bg-warning" role="progressbar"
-                                        style="width: 0%"></div>
-                                </div>
-                            </div>
-                            <div class="d-flex justify-content-between text-muted small mt-3">
-                                <div>
-                                    <span>Highest Expense:</span>
-                                    <strong id="highest-expense" class="d-block text-white">₹0</strong>
-                                </div>
-                                <div>
-                                    <span>Avg Spending:</span>
-                                    <strong id="avg-expense" class="d-block text-white">₹0</strong>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Recent Transactions Summary -->
-                <div class="col-md-12 col-lg-4">
-                    <div class="card widget-card h-100">
-                        <div class="card-body">
-                            <h5 class="card-title mb-3">Recent Activity</h5>
-                            <ul id="recent-list" class="list-unstyled recent-activity">
-                                <li class="text-muted small">No recent activity</li>
-                            </ul>
-                        </div>
+                    <div id="breakdown-empty-state" class="empty-state-card" style="display: none; padding: 20px 0;">
+                        <div class="empty-icon-wrap"><i class="fa-solid fa-receipt"></i></div>
+                        <div class="empty-state-title">No expenses yet</div>
+                        <div class="empty-state-desc">Add your first expense transaction to see where your money goes.</div>
                     </div>
                 </div>
             </div>
         </section>
 
-        <section class="main-content">
-            <div class="form-container">
-                <h2>Add Transaction</h2>
-                <form id="transaction-form">
-                    <div class="form-control">
-                        <label for="text">Description</label>
-                        <input type="text" id="text" placeholder="e.g. Salary, Rent, Coffee..." required />
-                        <span class="focus-border"></span>
+        <!-- ================= 3. SECONDARY ANALYTICS (Widgets) ================= -->
+        <section class="widgets-grid">
+            <!-- Calendar Widget -->
+            <div class="fintech-card">
+                <div class="card-header-clean">
+                    <h3 class="card-title-clean">
+                        <i class="fa-regular fa-calendar"></i> Calendar Activity
+                    </h3>
+                    <div class="calendar-legend-mini">
+                        <span title="Income day"><i class="fa-solid fa-circle legend-dot-income" style="font-size: 6px;"></i> Income</span>
+                        <span title="Expense day"><i class="fa-solid fa-circle legend-dot-expense" style="font-size: 6px;"></i> Expense</span>
+                    </div>
+                </div>
+
+                <div class="calendar-widget-body">
+                    <div id="mini-calendar" class="calendar-grid-modern">
+                        <!-- JS Generated -->
+                    </div>
+                    <div id="calendar-selected-feedback" class="cal-selected-info" style="display: none;">
+                        <span id="cal-selected-text">Selected date</span>
+                        <button type="button" id="cal-clear-btn" class="time-pill-btn" style="padding: 2px 6px;">Clear</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Budget Health Widget -->
+            <div class="fintech-card">
+                <div class="card-header-clean">
+                    <h3 class="card-title-clean">
+                        <i class="fa-solid fa-shield-heart"></i> Budget Health
+                    </h3>
+                    <span id="budget-status-pill" class="budget-status-pill status-under">Under Control</span>
+                </div>
+
+                <div>
+                    <div class="d-flex justify-content-between text-secondary" style="font-size: 0.8rem;">
+                        <span>Spent vs Income</span>
+                        <span id="budget-percent" class="fw-bold text-main">0%</span>
+                    </div>
+                    <div class="budget-progress-track">
+                        <div id="budget-progress" class="budget-progress-fill" style="width: 0%; background-color: var(--savings-green);"></div>
+                    </div>
+                    <p id="budget-status-message" class="text-muted" style="font-size: 0.75rem; margin-top: 6px;">
+                        Income serves as your monthly benchmark.
+                    </p>
+                </div>
+
+                <div class="budget-stats-row">
+                    <div class="budget-stat-item">
+                        <span>Highest Expense</span>
+                        <strong id="highest-expense">₹0.00</strong>
+                    </div>
+                    <div class="budget-stat-item">
+                        <span>Avg Spending</span>
+                        <strong id="avg-expense">₹0.00</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Activity Widget -->
+            <div class="fintech-card">
+                <div class="card-header-clean">
+                    <h3 class="card-title-clean">
+                        <i class="fa-solid fa-bolt"></i> Recent Activity
+                    </h3>
+                </div>
+
+                <ul id="recent-list" class="recent-activity-list">
+                    <!-- JS Generated -->
+                </ul>
+            </div>
+        </section>
+
+        <!-- ================= 4. BOTTOM WORKFLOW (Add & History) ================= -->
+        <section class="bottom-workflow-grid">
+            <!-- Left: Add Transaction Form -->
+            <div class="fintech-card">
+                <div class="card-header-clean">
+                    <h3 class="card-title-clean">
+                        <i class="fa-solid fa-plus-circle"></i> Add Transaction
+                    </h3>
+                </div>
+
+                <form id="transaction-form" autocomplete="off">
+                    <!-- Segmented Income / Expense Toggle -->
+                    <div class="type-segmented-control">
+                        <label class="type-segment-btn type-income active" id="btn-type-income">
+                            <input type="radio" name="type" value="income" checked>
+                            <i class="fa-solid fa-arrow-down-left"></i> + Income
+                        </label>
+                        <label class="type-segment-btn type-expense" id="btn-type-expense">
+                            <input type="radio" name="type" value="expense">
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i> - Expense
+                        </label>
                     </div>
 
-                    <div class="form-control">
-                        <label for="category">Category</label>
-                        <select id="category" class="custom-select">
-                            <option value="General">General</option>
-                            <option value="Food">Food & Dining</option>
-                            <option value="Transport">Transportation</option>
-                            <option value="Shopping">Shopping</option>
-                            <option value="Bills">Bills & Utilities</option>
-                            <option value="Entertainment">Entertainment</option>
-                            <option value="Health">Health & Fitness</option>
-                            <option value="Investment">Investment</option>
-                            <option value="Salary">Salary/Income</option>
-                        </select>
+                    <!-- Description -->
+                    <div class="form-group-clean">
+                        <label for="text" class="form-label-clean">Description</label>
+                        <input type="text" id="text" class="input-clean" placeholder="e.g. Salary, Rent, Coffee..." required />
                     </div>
 
-                    <div class="form-control">
-                        <label>Type</label>
-                        <div class="radio-group">
-                            <label class="radio-label">
-                                <input type="radio" name="type" value="income" checked>
-                                <span class="radio-btn income-btn">Income</span>
-                            </label>
-                            <label class="radio-label">
-                                <input type="radio" name="type" value="expense">
-                                <span class="radio-btn expense-btn">Expense</span>
-                            </label>
+                    <!-- Amount & Category Grid -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div class="form-group-clean">
+                            <label for="amount" class="form-label-clean">Amount</label>
+                            <div class="amount-input-wrap">
+                                <span class="amount-prefix">₹</span>
+                                <input type="number" id="amount" class="input-clean" placeholder="0.00" required min="0.01" step="0.01" />
+                            </div>
+                        </div>
+
+                        <div class="form-group-clean">
+                            <label for="category" class="form-label-clean">Category</label>
+                            <select id="category" class="select-clean">
+                                <option value="General">General</option>
+                                <option value="Food">Food & Dining</option>
+                                <option value="Transport">Transportation</option>
+                                <option value="Shopping">Shopping</option>
+                                <option value="Bills">Bills & Utilities</option>
+                                <option value="Entertainment">Entertainment</option>
+                                <option value="Health">Health & Fitness</option>
+                                <option value="Investment">Investment</option>
+                                <option value="Salary">Salary/Income</option>
+                            </select>
                         </div>
                     </div>
-                    <div class="form-control">
-                        <label for="date">Date</label>
-                        <input type="date" id="date" required />
+
+                    <!-- Date -->
+                    <div class="form-group-clean">
+                        <label for="date" class="form-label-clean">Date</label>
+                        <input type="date" id="date" class="input-clean" required />
                     </div>
 
-                    <div class="form-control">
-                        <label for="amount">Amount</label>
-                        <input type="number" id="amount" placeholder="Enter amount..." required min="0.01"
-                            step="0.01" />
-                        <span class="focus-border"></span>
-                    </div>
-                    <button class="btn">Add Transaction</button>
+                    <button type="submit" class="btn-primary-purple" id="submit-btn">
+                        <i class="fa-solid fa-plus"></i> Add Transaction
+                    </button>
                 </form>
             </div>
 
-            <div class="history-container">
-                <h2>History</h2>
-                <ul id="list" class="list">
-                    <!-- Transactions will be added here dynamically -->
+            <!-- Right: History Section -->
+            <div class="fintech-card">
+                <div class="card-header-clean">
+                    <h3 class="card-title-clean">
+                        <i class="fa-solid fa-clock-rotate-left"></i> Transaction History
+                    </h3>
+                </div>
+
+                <!-- History Controls (Search, Filters, Sort) -->
+                <div class="history-controls">
+                    <div class="history-search-row">
+                        <div class="search-input-box">
+                            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                            <input type="text" id="history-search" class="input-clean" placeholder="Search transactions by title or category..." />
+                        </div>
+                        <select id="history-sort" class="select-clean sort-select" title="Sort transactions">
+                            <option value="newest">Newest</option>
+                            <option value="oldest">Oldest</option>
+                            <option value="highest">Highest Amount</option>
+                            <option value="lowest">Lowest Amount</option>
+                        </select>
+                    </div>
+
+                    <div class="history-filter-pills">
+                        <div class="pill-filter-group">
+                            <button type="button" class="history-pill-btn active" data-type-filter="all" id="filter-pill-all">All</button>
+                            <button type="button" class="history-pill-btn" data-type-filter="income" id="filter-pill-income">Income</button>
+                            <button type="button" class="history-pill-btn" data-type-filter="expense" id="filter-pill-expense">Expense</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- History Transactions List -->
+                <ul id="list" class="history-list">
+                    <!-- Transactions dynamically inserted here -->
                 </ul>
-                <button id="delete-all-btn" class="btn btn-outline-danger w-100 mt-3">
-                    <i class="fa-solid fa-trash-can"></i> Delete All
+
+                <div id="history-empty-state" class="empty-state-card" style="display: none;">
+                    <div class="empty-icon-wrap"><i class="fa-solid fa-inbox"></i></div>
+                    <div class="empty-state-title">No transactions yet</div>
+                    <div class="empty-state-desc">Add your first transaction to get started with your budget.</div>
+                </div>
+
+                <button id="delete-all-btn" class="btn-secondary-danger">
+                    <i class="fa-solid fa-trash-can"></i> Delete All Active Logs
                 </button>
             </div>
         </section>
-        <div class="overlay" id="overlay"></div>
+    </div>
 
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-        <script src="app.js"></script>
+    <!-- ================= FILTER SIDEBAR ================= -->
+    <aside id="sidebar" class="sidebar" aria-label="Filter Sidebar">
+        <div class="sidebar-header">
+            <h2><i class="fa-solid fa-filter" style="color: var(--primary-purple);"></i> Filter Dashboard</h2>
+            <button id="close-sidebar" class="close-btn" aria-label="Close Filter Sidebar">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="sidebar-content">
+            <div class="filter-group">
+                <div class="filter-group-title">Year</div>
+                <ul id="year-list" class="filter-list">
+                    <!-- Years dynamically populated by JS -->
+                </ul>
+            </div>
+
+            <div class="filter-group">
+                <div class="filter-group-title">Period & Month</div>
+                <ul id="month-list" class="filter-list">
+                    <li data-month="lifetime" class="special-option">
+                        <i class="fa-solid fa-infinity me-2"></i> Lifetime Record
+                    </li>
+                    <li data-month="all" class="special-option">
+                        <i class="fa-regular fa-calendar-days me-2"></i> Entire Year
+                    </li>
+                    <li data-month="0">January</li>
+                    <li data-month="1">February</li>
+                    <li data-month="2">March</li>
+                    <li data-month="3">April</li>
+                    <li data-month="4">May</li>
+                    <li data-month="5">June</li>
+                    <li data-month="6">July</li>
+                    <li data-month="7">August</li>
+                    <li data-month="8">September</li>
+                    <li data-month="9">October</li>
+                    <li data-month="10">November</li>
+                    <li data-month="11">December</li>
+                </ul>
+            </div>
+
+            <button id="open-bin-btn" class="bin-btn">
+                <i class="fa-solid fa-trash-arrow-up" style="color: var(--expense-coral);"></i> Deleted Logs
+            </button>
+        </div>
+    </aside>
+
+    <div class="overlay" id="overlay"></div>
+
+    <!-- ================= RECYCLE BIN MODAL ================= -->
+    <div class="modal-overlay" id="bin-modal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-trash-arrow-up me-2" style="color: var(--primary-purple);"></i> Deleted Logs (Recycle Bin)</h2>
+                <button class="close-modal-btn" id="close-bin-btn" aria-label="Close Recycle Bin">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <ul id="bin-list" class="history-list">
+                    <!-- Deleted items dynamically listed here -->
+                </ul>
+                <div id="bin-empty-msg" class="empty-state-card" style="display: none;">
+                    <div class="empty-icon-wrap"><i class="fa-solid fa-trash-can"></i></div>
+                    <div class="empty-state-title">Recycle bin is empty</div>
+                    <div class="empty-state-desc">Deleted transactions will appear here and can be restored anytime.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart.js and App Logic -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="app.js"></script>
 </body>
 
 </html>
