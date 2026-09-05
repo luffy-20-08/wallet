@@ -122,6 +122,8 @@ body {
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-sm);
+    position: relative;
+    z-index: 50;
 }
 
 .header-left {
@@ -227,6 +229,7 @@ body {
     align-items: center;
     gap: 14px;
     position: relative;
+    z-index: 100;
 }
 
 .notification-btn {
@@ -303,14 +306,14 @@ body {
     position: absolute;
     right: 0;
     top: calc(100% + 10px);
-    min-width: 210px;
+    min-width: 220px;
     background: #17171B;
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
-    box-shadow: var(--shadow-lg);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.08);
     padding: 8px;
     display: none;
-    z-index: 1000;
+    z-index: 99999;
 }
 .profile-dropdown-menu.show {
     display: block;
@@ -408,6 +411,8 @@ body {
     grid-template-columns: repeat(4, 1fr);
     gap: 16px;
     margin-bottom: 20px;
+    position: relative;
+    z-index: 1;
 }
 @media (max-width: 1100px) {
     .summary-cards-grid {

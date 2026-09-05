@@ -666,39 +666,20 @@ function updateValues() {
 // CHARTS: INCOME VS EXPENSE (SMOOTH CURVE) & DONUT
 // ===================================================
 function renderCharts(currentTransactions) {
-    renderTrendChart(currentTransactions);
+    renderTrendChart();
     renderExpenseBreakdown(currentTransactions);
 }
 
-function renderTrendChart(currentTransactions) {
+function renderTrendChart() {
     const canvas = document.getElementById('incomeExpenseChart');
+    if (!canvas) return;
     const ctx = canvas.getContext('2d');
-
-    let chartTransactions = [...currentTransactions];
-    const now = new Date();
-
-    if (chartTimeRange === '7D') {
-        const cutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        chartTransactions = chartTransactions.filter(t => new Date(t.date || t.createdAt) >= cutoff);
-    } else if (chartTimeRange === '1M') {
-        const cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        chartTransactions = chartTransactions.filter(t => new Date(t.date || t.createdAt) >= cutoff);
-    } else if (chartTimeRange === '3M') {
-        const cutoff = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-        chartTransactions = chartTransactions.filter(t => new Date(t.date || t.createdAt) >= cutoff);
-    } else if (chartTimeRange === '6M') {
-        const cutoff = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
-        chartTransactions = chartTransactions.filter(t => new Date(t.date || t.createdAt) >= cutoff);
-    } else if (chartTimeRange === '1Y') {
-        const cutoff = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
-        chartTransactions = chartTransactions.filter(t => new Date(t.date || t.createdAt) >= cutoff);
-    }
 
     if (incomeExpenseChart) {
         incomeExpenseChart.destroy();
     }
 
-    if (chartTransactions.length === 0) {
+    if (!transactions || transactions.length === 0) {
         canvas.style.display = 'none';
         chartEmptyState.style.display = 'flex';
         return;
@@ -707,17 +688,187 @@ function renderTrendChart(currentTransactions) {
         chartEmptyState.style.display = 'none';
     }
 
-    // Group transactions by month for the line trend curve
-    const monthsMap = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const monthlyIncome = new Array(12).fill(0);
-    const monthlyExpense = new Array(12).fill(0);
+    const now = new Date();
+    let labels = [];
+    let incomeData = [];
+    let expenseData = [];
+    let tooltipTitles = [];
 
-    chartTransactions.forEach(t => {
-        const d = new Date(t.date || t.createdAt);
-        const m = d.getMonth();
-        if (t.amount > 0) monthlyIncome[m] += Math.abs(t.amount);
-        if (t.amount < 0) monthlyExpense[m] += Math.abs(t.amount);
-    });
+    if (chartTimeRange === '7D') {
+        // Last 7 days ending today
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const dayNum = String(d.getDate()).padStart(2, '0');
+            const dateStr = `${y}-${m}-${dayNum}`;
+
+            const weekday = d.toLocaleDateString('en-US', { weekday: 'short' });
+            labels.push(`${weekday} ${d.getDate()}`);
+            tooltipTitles.push(d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' }));
+
+            let inc = 0;
+            let exp = 0;
+            transactions.forEach(t => {
+                const td = new Date(t.date || t.createdAt);
+                const ty = td.getFullYear();
+                const tm = String(td.getMonth() + 1).padStart(2, '0');
+                const tday = String(td.getDate()).padStart(2, '0');
+                if (`${ty}-${tm}-${tday}` === dateStr) {
+                    if (t.amount > 0) inc += Math.abs(t.amount);
+                    if (t.amount < 0) exp += Math.abs(t.amount);
+                }
+            });
+            incomeData.push(inc);
+            expenseData.push(exp);
+        }
+    } else if (chartTimeRange === '1M') {
+        // Whole Month: 5 weekly buckets across the current/selected month
+        const targetYear = (selectedMonth !== 'all' && selectedMonth !== 'lifetime') ? selectedYear : now.getFullYear();
+        const targetMonth = (selectedMonth !== 'all' && selectedMonth !== 'lifetime') ? selectedMonth : now.getMonth();
+        const totalDays = new Date(targetYear, targetMonth + 1, 0).getDate();
+        const monthShort = new Date(targetYear, targetMonth, 1).toLocaleDateString('en-US', { month: 'short' });
+        const monthLong = new Date(targetYear, targetMonth, 1).toLocaleDateString('en-US', { month: 'long' });
+
+        const weekBuckets = [
+            { start: 1, end: 7, label: `${monthShort} 1-7`, title: `${monthLong} 1st - 7th, ${targetYear}` },
+            { start: 8, end: 14, label: `${monthShort} 8-14`, title: `${monthLong} 8th - 14th, ${targetYear}` },
+            { start: 15, end: 21, label: `${monthShort} 15-21`, title: `${monthLong} 15th - 21st, ${targetYear}` },
+            { start: 22, end: 28, label: `${monthShort} 22-28`, title: `${monthLong} 22nd - 28th, ${targetYear}` },
+            { start: 29, end: totalDays, label: `${monthShort} 29-${totalDays}`, title: `${monthLong} 29th - ${totalDays}th, ${targetYear}` }
+        ];
+
+        weekBuckets.forEach(b => {
+            labels.push(b.label);
+            tooltipTitles.push(b.title);
+            let inc = 0;
+            let exp = 0;
+            transactions.forEach(t => {
+                const td = new Date(t.date || t.createdAt);
+                if (td.getFullYear() === targetYear && td.getMonth() === targetMonth) {
+                    const day = td.getDate();
+                    if (day >= b.start && day <= b.end) {
+                        if (t.amount > 0) inc += Math.abs(t.amount);
+                        if (t.amount < 0) exp += Math.abs(t.amount);
+                    }
+                }
+            });
+            incomeData.push(inc);
+            expenseData.push(exp);
+        });
+    } else if (chartTimeRange === '3M') {
+        // 3 Months: 6 bi-weekly periods across the last 3 months
+        for (let i = 2; i >= 0; i--) {
+            const mDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const mYear = mDate.getFullYear();
+            const mMonth = mDate.getMonth();
+            const mShort = mDate.toLocaleDateString('en-US', { month: 'short' });
+            const mDays = new Date(mYear, mMonth + 1, 0).getDate();
+
+            // First half: 1st - 15th
+            labels.push(`${mShort} 1-15`);
+            tooltipTitles.push(`${mShort} 1st - 15th, ${mYear}`);
+            let inc1 = 0, exp1 = 0;
+
+            // Second half: 16th - End of month
+            labels.push(`${mShort} 16-${mDays}`);
+            tooltipTitles.push(`${mShort} 16th - ${mDays}th, ${mYear}`);
+            let inc2 = 0, exp2 = 0;
+
+            transactions.forEach(t => {
+                const td = new Date(t.date || t.createdAt);
+                if (td.getFullYear() === mYear && td.getMonth() === mMonth) {
+                    const day = td.getDate();
+                    if (day <= 15) {
+                        if (t.amount > 0) inc1 += Math.abs(t.amount);
+                        if (t.amount < 0) exp1 += Math.abs(t.amount);
+                    } else {
+                        if (t.amount > 0) inc2 += Math.abs(t.amount);
+                        if (t.amount < 0) exp2 += Math.abs(t.amount);
+                    }
+                }
+            });
+            incomeData.push(inc1, inc2);
+            expenseData.push(exp1, exp2);
+        }
+    } else if (chartTimeRange === '6M') {
+        // 6 Months: past 6 calendar months
+        for (let i = 5; i >= 0; i--) {
+            const mDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const mYear = mDate.getFullYear();
+            const mMonth = mDate.getMonth();
+            const mShort = mDate.toLocaleDateString('en-US', { month: 'short' });
+            labels.push(mShort);
+            tooltipTitles.push(mDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }));
+
+            let inc = 0, exp = 0;
+            transactions.forEach(t => {
+                const td = new Date(t.date || t.createdAt);
+                if (td.getFullYear() === mYear && td.getMonth() === mMonth) {
+                    if (t.amount > 0) inc += Math.abs(t.amount);
+                    if (t.amount < 0) exp += Math.abs(t.amount);
+                }
+            });
+            incomeData.push(inc);
+            expenseData.push(exp);
+        }
+    } else if (chartTimeRange === 'ALL') {
+        // ALL: Group by year if spanning multiple years, else all 12 calendar months
+        const yearsSet = new Set(transactions.map(t => new Date(t.date || t.createdAt).getFullYear()));
+        const sortedYears = Array.from(yearsSet).sort((a, b) => a - b);
+
+        if (sortedYears.length > 1) {
+            sortedYears.forEach(yr => {
+                labels.push(String(yr));
+                tooltipTitles.push(`Year ${yr}`);
+                let inc = 0, exp = 0;
+                transactions.forEach(t => {
+                    const td = new Date(t.date || t.createdAt);
+                    if (td.getFullYear() === yr) {
+                        if (t.amount > 0) inc += Math.abs(t.amount);
+                        if (t.amount < 0) exp += Math.abs(t.amount);
+                    }
+                });
+                incomeData.push(inc);
+                expenseData.push(exp);
+            });
+        } else {
+            const yr = sortedYears[0] || selectedYear || now.getFullYear();
+            const monthsMap = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            monthsMap.forEach((mName, mIdx) => {
+                labels.push(mName);
+                tooltipTitles.push(`${mName} ${yr}`);
+                let inc = 0, exp = 0;
+                transactions.forEach(t => {
+                    const td = new Date(t.date || t.createdAt);
+                    if (td.getFullYear() === yr && td.getMonth() === mIdx) {
+                        if (t.amount > 0) inc += Math.abs(t.amount);
+                        if (t.amount < 0) exp += Math.abs(t.amount);
+                    }
+                });
+                incomeData.push(inc);
+                expenseData.push(exp);
+            });
+        }
+    } else {
+        // '1Y' (Default): 12 calendar months of selectedYear
+        const yr = selectedYear || now.getFullYear();
+        const monthsMap = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        monthsMap.forEach((mName, mIdx) => {
+            labels.push(mName);
+            tooltipTitles.push(`${mName} ${yr}`);
+            let inc = 0, exp = 0;
+            transactions.forEach(t => {
+                const td = new Date(t.date || t.createdAt);
+                if (td.getFullYear() === yr && td.getMonth() === mIdx) {
+                    if (t.amount > 0) inc += Math.abs(t.amount);
+                    if (t.amount < 0) exp += Math.abs(t.amount);
+                }
+            });
+            incomeData.push(inc);
+            expenseData.push(exp);
+        });
+    }
 
     // Create subtle gradients
     const gradInc = ctx.createLinearGradient(0, 0, 0, 240);
@@ -731,11 +882,11 @@ function renderTrendChart(currentTransactions) {
     incomeExpenseChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: monthsMap,
+            labels: labels,
             datasets: [
                 {
                     label: 'Income',
-                    data: monthlyIncome,
+                    data: incomeData,
                     borderColor: '#00D9C0',
                     backgroundColor: gradInc,
                     borderWidth: 2.5,
@@ -749,7 +900,7 @@ function renderTrendChart(currentTransactions) {
                 },
                 {
                     label: 'Expense',
-                    data: monthlyExpense,
+                    data: expenseData,
                     borderColor: '#FF5C72',
                     backgroundColor: gradExp,
                     borderWidth: 2.5,
@@ -783,7 +934,8 @@ function renderTrendChart(currentTransactions) {
                     usePointStyle: true,
                     callbacks: {
                         title: function(items) {
-                            return `${items[0].label} ${selectedYear}`;
+                            const idx = items[0].dataIndex;
+                            return tooltipTitles[idx] || items[0].label;
                         },
                         label: function (ctx) {
                             return ` ${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y)}`;
@@ -817,7 +969,9 @@ function renderTrendChart(currentTransactions) {
                     grid: { display: false },
                     ticks: {
                         color: '#9996A3',
-                        font: { family: 'Inter', size: 11 }
+                        font: { family: 'Inter', size: 11 },
+                        maxRotation: 0,
+                        autoSkip: false
                     }
                 }
             }
@@ -1281,11 +1435,25 @@ function escapeHTML(str) {
 // Form Submission
 form.addEventListener('submit', addTransaction);
 
+// Chart Time Range Selector Buttons (7D, 1M, 3M, 6M, 1Y, ALL)
+function initChartTimeSelectors() {
+    const timeBtns = document.querySelectorAll('#chart-time-selectors .time-pill-btn');
+    timeBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            timeBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            chartTimeRange = btn.getAttribute('data-range');
+            renderTrendChart();
+        });
+    });
+}
+
 // App Initialization
 function init() {
     initUserProfile();
     renderYears();
     initPeriodAndMonthSelection();
+    initChartTimeSelectors();
     syncDateInput();
     updateValues();
     renderHistoryDOM();
