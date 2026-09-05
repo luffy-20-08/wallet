@@ -7,15 +7,31 @@
 
 // DOM Elements: Header & User
 const userDisplay = document.getElementById('user-display');
+const userAvatarInitial = document.getElementById('user-avatar-initial');
 const userMenuBtn = document.getElementById('user-menu-btn');
 const userDropdown = document.getElementById('user-dropdown');
+const headerSearchInput = document.getElementById('header-search-input');
+const openAccountBtn = document.getElementById('open-account-btn');
+const openBinFromMenu = document.getElementById('open-bin-from-menu');
+
+// Account Modal Elements
+const accountModal = document.getElementById('account-modal');
+const closeAccountBtn = document.getElementById('close-account-btn');
+const modalAvatarInitial = document.getElementById('modal-avatar-initial');
+const modalUsername = document.getElementById('modal-username');
+const modalEmail = document.getElementById('modal-email');
+const dropdownUsername = document.getElementById('dropdown-username');
+const dropdownEmail = document.getElementById('dropdown-email');
 
 // DOM Elements: Summary Cards
 const balanceEl = document.getElementById('total-balance');
 const incomeEl = document.getElementById('total-income');
 const expenseEl = document.getElementById('total-expense');
 const savingsRateEl = document.getElementById('savings-rate');
-const savingsProgressEl = document.getElementById('savings-progress');
+const savingsCirclePath = document.getElementById('savings-circle-path');
+const savingsRingText = document.getElementById('savings-ring-text');
+const cardSubIncome = document.getElementById('card-sub-income');
+const cardSubExpense = document.getElementById('card-sub-expense');
 
 // DOM Elements: Form
 const form = document.getElementById('transaction-form');
@@ -41,8 +57,14 @@ const toggleSidebarBtn = document.getElementById('toggle-sidebar');
 const closeSidebarBtn = document.getElementById('close-sidebar');
 const sidebar = document.getElementById('sidebar');
 const overlay = document.getElementById('overlay');
-const yearList = document.getElementById('year-list');
+const yearSelect = document.getElementById('year-select');
 const monthList = document.getElementById('month-list');
+const periodLifetime = document.getElementById('period-lifetime');
+const periodEntireYear = document.getElementById('period-entire-year');
+const sideTypeAll = document.getElementById('side-type-all');
+const sideTypeInc = document.getElementById('side-type-inc');
+const sideTypeExp = document.getElementById('side-type-exp');
+const sidebarCategorySelect = document.getElementById('sidebar-category-select');
 
 const openBinBtn = document.getElementById('open-bin-btn');
 const closeBinBtn = document.getElementById('close-bin-btn');
@@ -57,20 +79,23 @@ const donutCenterStat = document.getElementById('donut-center-stat');
 const donutTotalSpent = document.getElementById('donut-total-spent');
 const categoryLegend = document.getElementById('category-legend');
 
-const budgetStatusPill = document.getElementById('budget-status-pill');
+const budgetTargetDisplay = document.getElementById('budget-target-display');
 const budgetPercentEl = document.getElementById('budget-percent');
 const budgetProgressEl = document.getElementById('budget-progress');
-const budgetMessageEl = document.getElementById('budget-status-message');
-const highestExpenseEl = document.getElementById('highest-expense');
-const avgExpenseEl = document.getElementById('avg-expense');
+const budgetRemainingText = document.getElementById('budget-remaining-text');
+const budgetStatusPill = document.getElementById('budget-status-pill');
+const budgetStatusMessage = document.getElementById('budget-status-message');
 
 const recentList = document.getElementById('recent-list');
 const miniCalendar = document.getElementById('mini-calendar');
-const calendarFeedback = document.getElementById('calendar-selected-feedback');
-const calSelectedText = document.getElementById('cal-selected-text');
-const calClearBtn = document.getElementById('cal-clear-btn');
+const calMonthTitle = document.getElementById('cal-month-title');
+const calPrevMonth = document.getElementById('cal-prev-month');
+const calNextMonth = document.getElementById('cal-next-month');
+const dayBreakdownTitle = document.getElementById('day-breakdown-title');
+const dayTransactionsList = document.getElementById('day-transactions-list');
+const dayTransTotal = document.getElementById('day-trans-total');
 
-// Global State
+// Global Application State
 let transactions = [];
 let deletedTransactions = [];
 
@@ -79,11 +104,16 @@ let selectedYear = currentDate.getFullYear();
 let selectedMonth = currentDate.getMonth(); // 0-11, 'all', or 'lifetime'
 let selectedDashboardDate = null; // 'YYYY-MM-DD' or null
 
+// Calendar view month & year
+let calViewYear = currentDate.getFullYear();
+let calViewMonth = currentDate.getMonth();
+
 let historyTypeFilter = 'all'; // 'all', 'income', 'expense'
 let historySearchTerm = '';
 let historySortOption = 'newest';
+let sidebarCategoryFilter = '';
 
-let chartTimeRange = 'ALL'; // 'ALL', '7D', '1M', '3M', '6M', '1Y'
+let chartTimeRange = '1Y'; // '7D', '1M', '3M', '6M', '1Y', 'ALL'
 
 let incomeExpenseChart = null;
 let expenseChart = null;
@@ -111,9 +141,16 @@ function getCategoryInfo(cat) {
 function formatCurrency(amount) {
     const num = Math.abs(Number(amount) || 0);
     return '₹' + num.toLocaleString('en-IN', {
-        minimumFractionDigits: 2,
+        minimumFractionDigits: 0,
         maximumFractionDigits: 2
     });
+}
+
+// Date Formatter: "Sep 5, 2026"
+function formatDateMedium(dateVal) {
+    if (!dateVal) return '';
+    const d = new Date(dateVal);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 // ===================================================
@@ -153,6 +190,67 @@ async function getDeletedTransactions() {
 }
 
 // ===================================================
+// USER PROFILE & ACCOUNT MODAL
+// ===================================================
+function initUserProfile() {
+    const user = JSON.parse(localStorage.getItem('user')) || { username: 'Himanshu', email: 'user@example.com' };
+    const initial = (user.username ? user.username.charAt(0) : 'H').toUpperCase();
+
+    if (userDisplay) userDisplay.innerText = `Hello, ${user.username}`;
+    if (userAvatarInitial) userAvatarInitial.innerText = initial;
+    if (modalAvatarInitial) modalAvatarInitial.innerText = initial;
+    if (modalUsername) modalUsername.innerText = user.username;
+    if (modalEmail) modalEmail.innerText = user.email || 'user@example.com';
+    if (dropdownUsername) dropdownUsername.innerText = user.username;
+    if (dropdownEmail) dropdownEmail.innerText = user.email || 'user@example.com';
+}
+
+if (userMenuBtn) {
+    userMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        userDropdown.classList.toggle('show');
+    });
+
+    window.addEventListener('click', (e) => {
+        if (!userMenuBtn.contains(e.target) && !userDropdown.contains(e.target)) {
+            userDropdown.classList.remove('show');
+        }
+    });
+}
+
+// Open / Close Manage Account Modal
+if (openAccountBtn) {
+    openAccountBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        userDropdown.classList.remove('show');
+        accountModal.classList.add('active');
+    });
+}
+if (closeAccountBtn) {
+    closeAccountBtn.addEventListener('click', () => {
+        accountModal.classList.remove('active');
+    });
+}
+if (openBinFromMenu) {
+    openBinFromMenu.addEventListener('click', (e) => {
+        e.preventDefault();
+        userDropdown.classList.remove('show');
+        renderBin();
+        binModal.classList.add('active');
+    });
+}
+
+// Header Search syncs with History Search
+if (headerSearchInput) {
+    headerSearchInput.addEventListener('input', (e) => {
+        const val = e.target.value;
+        historySearch.value = val;
+        historySearchTerm = val.toLowerCase().trim();
+        renderHistoryDOM();
+    });
+}
+
+// ===================================================
 // SIDEBAR & RECYCLE BIN CONTROLS
 // ===================================================
 toggleSidebarBtn.addEventListener('click', () => {
@@ -169,57 +267,108 @@ closeSidebarBtn.addEventListener('click', closeSidebar);
 overlay.addEventListener('click', closeSidebar);
 
 function renderYears() {
-    yearList.innerHTML = '';
+    if (!yearSelect) return;
+    yearSelect.innerHTML = '';
     const currentY = new Date().getFullYear();
     const years = transactions.map(t => new Date(t.date || t.createdAt).getFullYear());
     const minYear = years.length > 0 ? Math.min(...years, currentY) : currentY;
 
     for (let y = currentY; y >= minYear; y--) {
-        const li = document.createElement('li');
-        li.innerText = y;
-        if (y === selectedYear) li.classList.add('active');
-        li.addEventListener('click', () => {
-            selectedYear = y;
-            renderYears();
-            syncDateInput();
-            updateValues();
-            renderHistoryDOM();
-            closeSidebar();
-        });
-        yearList.appendChild(li);
+        const opt = document.createElement('option');
+        opt.value = y;
+        opt.innerText = y;
+        if (y === selectedYear) opt.selected = true;
+        yearSelect.appendChild(opt);
     }
+
+    yearSelect.addEventListener('change', (e) => {
+        selectedYear = parseInt(e.target.value);
+        calViewYear = selectedYear;
+        updateValues();
+        renderHistoryDOM();
+    });
 }
 
-function initMonthSelection() {
-    const months = monthList.querySelectorAll('li');
-    months.forEach(li => {
-        li.classList.remove('active');
-        const monthVal = li.getAttribute('data-month');
-
-        if (monthVal === 'lifetime' && selectedMonth === 'lifetime') {
-            li.classList.add('active');
-        } else if (monthVal === 'all' && selectedMonth === 'all') {
-            li.classList.add('active');
-        } else if (parseInt(monthVal) === selectedMonth) {
-            li.classList.add('active');
-        }
-
-        li.addEventListener('click', (e) => {
-            const val = li.getAttribute('data-month');
-            if (val === 'lifetime') {
-                selectedMonth = 'lifetime';
-            } else if (val === 'all') {
-                selectedMonth = 'all';
-            } else {
-                selectedMonth = parseInt(val);
-            }
-
-            initMonthSelection();
-            syncDateInput();
+function initPeriodAndMonthSelection() {
+    if (periodLifetime) {
+        periodLifetime.addEventListener('click', () => {
+            periodLifetime.classList.add('active');
+            periodEntireYear.classList.remove('active');
+            selectedMonth = 'lifetime';
+            clearMonthActiveUI();
             updateValues();
             renderHistoryDOM();
-            closeSidebar();
         });
+    }
+
+    if (periodEntireYear) {
+        periodEntireYear.addEventListener('click', () => {
+            periodEntireYear.classList.add('active');
+            periodLifetime.classList.remove('active');
+            selectedMonth = 'all';
+            clearMonthActiveUI();
+            const allItem = monthList.querySelector('li[data-month="all"]');
+            if (allItem) allItem.classList.add('active');
+            updateValues();
+            renderHistoryDOM();
+        });
+    }
+
+    const months = monthList.querySelectorAll('li');
+    months.forEach(li => {
+        li.addEventListener('click', (e) => {
+            clearMonthActiveUI();
+            li.classList.add('active');
+            const val = li.getAttribute('data-month');
+
+            periodLifetime.classList.remove('active');
+            periodEntireYear.classList.remove('active');
+
+            if (val === 'all') {
+                selectedMonth = 'all';
+                periodEntireYear.classList.add('active');
+            } else {
+                selectedMonth = parseInt(val);
+                calViewMonth = selectedMonth;
+            }
+
+            updateValues();
+            renderHistoryDOM();
+        });
+    });
+}
+
+function clearMonthActiveUI() {
+    const months = monthList.querySelectorAll('li');
+    months.forEach(li => li.classList.remove('active'));
+}
+
+// Sidebar Transaction Type Filters
+if (sideTypeAll && sideTypeInc && sideTypeExp) {
+    sideTypeAll.addEventListener('click', () => {
+        sideTypeAll.classList.add('active');
+        sideTypeInc.classList.remove('active');
+        sideTypeExp.classList.remove('active');
+        setHistoryTypeFilter('all');
+    });
+    sideTypeInc.addEventListener('click', () => {
+        sideTypeInc.classList.add('active');
+        sideTypeAll.classList.remove('active');
+        sideTypeExp.classList.remove('active');
+        setHistoryTypeFilter('income');
+    });
+    sideTypeExp.addEventListener('click', () => {
+        sideTypeExp.classList.add('active');
+        sideTypeAll.classList.remove('active');
+        sideTypeInc.classList.remove('active');
+        setHistoryTypeFilter('expense');
+    });
+}
+
+if (sidebarCategorySelect) {
+    sidebarCategorySelect.addEventListener('change', (e) => {
+        sidebarCategoryFilter = e.target.value.toLowerCase().trim();
+        renderHistoryDOM();
     });
 }
 
@@ -243,30 +392,23 @@ function renderBin() {
         deletedTransactions.forEach(item => {
             const isExp = item.amount < 0;
             const catInfo = getCategoryInfo(item.category);
-            const li = document.createElement('li');
-            li.className = 'history-item';
-            li.innerHTML = `
-                <div class="hist-left">
-                    <div class="hist-cat-icon ${isExp ? 'exp' : 'inc'}">
-                        <i class="fa-solid ${catInfo.icon}"></i>
-                    </div>
-                    <div class="hist-info">
-                        <h4>${escapeHTML(item.text)}</h4>
-                        <div class="hist-meta">
-                            <span class="hist-category-tag">${catInfo.label}</span>
-                            <span>${new Date(item.date || item.createdAt).toLocaleDateString()}</span>
-                        </div>
-                    </div>
+            const row = document.createElement('div');
+            row.className = 'history-table-row';
+            row.style.gridTemplateColumns = '85px 1.5fr 1fr 100px 110px';
+            row.innerHTML = `
+                <div class="h-col-date">${formatDateMedium(item.date || item.createdAt)}</div>
+                <div class="h-col-desc">
+                    <div class="h-desc-icon ${isExp ? 'exp' : 'inc'}"><i class="fa-solid ${catInfo.icon}"></i></div>
+                    <span class="h-desc-text">${escapeHTML(item.text)}</span>
                 </div>
-                <div class="hist-right">
-                    <span class="hist-amount ${isExp ? 'exp' : 'inc'}">${isExp ? '-' : '+'}${formatCurrency(item.amount)}</span>
-                    <div class="bin-actions">
-                        <button class="restore-btn" onclick="restoreTransaction('${item._id}')" title="Restore"><i class="fa-solid fa-rotate-left"></i> Restore</button>
-                        <button class="perm-delete-btn" onclick="eliminateTransaction('${item._id}')" title="Delete permanently"><i class="fa-solid fa-trash"></i></button>
-                    </div>
+                <div class="h-col-cat">${catInfo.label}</div>
+                <div class="h-col-amount ${isExp ? 'exp' : 'inc'}">${isExp ? '-' : '+'}${formatCurrency(item.amount)}</div>
+                <div class="h-col-actions">
+                    <button class="restore-btn" onclick="restoreTransaction('${item._id}')" title="Restore"><i class="fa-solid fa-rotate-left"></i> Restore</button>
+                    <button class="perm-delete-btn" onclick="eliminateTransaction('${item._id}')" title="Delete permanently"><i class="fa-solid fa-trash"></i></button>
                 </div>
             `;
-            binList.appendChild(li);
+            binList.appendChild(row);
         });
     }
 }
@@ -274,29 +416,15 @@ function renderBin() {
 // Sync Date Input default
 function syncDateInput() {
     const today = new Date();
-    let d = today;
-
-    if (selectedYear !== today.getFullYear()) {
-        d = new Date(selectedYear, 0, 1);
-    }
-    if (typeof selectedMonth === 'number') {
-        if (selectedYear === today.getFullYear() && selectedMonth === today.getMonth()) {
-            d = today;
-        } else {
-            d = new Date(selectedYear, selectedMonth, 1);
-        }
-    }
-
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
     dateInput.value = `${year}-${month}-${day}`;
 }
 
 // ===================================================
 // ADD TRANSACTION LOGIC
 // ===================================================
-// Segmented Toggle Behavior
 btnTypeIncome.addEventListener('click', () => {
     btnTypeIncome.classList.add('active');
     btnTypeExpense.classList.remove('active');
@@ -369,7 +497,7 @@ async function addTransaction(e) {
 }
 
 // ===================================================
-// TRANSACTION ACTIONS (Soft delete, Restore, Delete Permanent)
+// TRANSACTION ACTIONS (Soft delete, Restore, Permanent Delete)
 // ===================================================
 async function removeTransaction(id) {
     if (confirm('Move this transaction to the Recycle Bin?')) {
@@ -440,7 +568,7 @@ async function eliminateTransaction(id) {
 }
 
 async function deleteAllTransactions() {
-    if (confirm('Are you sure you want to move ALL transactions to the Recycle Bin?')) {
+    if (confirm('Are you sure you want to move ALL active transactions to the Recycle Bin?')) {
         try {
             const token = localStorage.getItem('token');
             const res = await fetch(`${API_URL}/all`, {
@@ -470,12 +598,11 @@ if (deleteAllBtn) {
 }
 
 // ===================================================
-// FILTERING & VALUE CALCULATIONS
+// FILTERING & SUMMARY CARD VALUE CALCULATIONS
 // ===================================================
 function getFilteredTransactions() {
     let filtered = [];
 
-    // Date Filter Priority: Specific Calendar Date > Month / Year > Lifetime
     if (selectedDashboardDate) {
         filtered = transactions.filter(t => {
             const tDate = new Date(t.date || t.createdAt);
@@ -503,53 +630,43 @@ function getFilteredTransactions() {
 function updateValues() {
     const filtered = getFilteredTransactions();
 
-    // Determine Period Label
-    let periodText = 'Lifetime Wallet';
-    if (selectedDashboardDate) {
-        const dObj = new Date(selectedDashboardDate + 'T00:00:00');
-        periodText = dObj.toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' });
-    } else if (selectedMonth === 'all') {
-        periodText = `Entire Year ${selectedYear}`;
-    } else if (typeof selectedMonth === 'number') {
-        const mName = new Date(selectedYear, selectedMonth).toLocaleString('default', { month: 'short' });
-        periodText = `${mName} ${selectedYear}`;
-    }
-
-    document.querySelectorAll('.period').forEach(el => {
-        el.innerText = periodText;
-    });
-
     const amounts = filtered.map(t => t.amount);
     const total = amounts.reduce((acc, item) => (acc += item), 0);
     const income = amounts.filter(item => item > 0).reduce((acc, item) => (acc += item), 0);
     const expense = Math.abs(amounts.filter(item => item < 0).reduce((acc, item) => (acc += item), 0));
 
-    // Update Summary Elements
+    // Update Top Summary Cards
     balanceEl.innerText = (total < 0 ? '-' : '') + formatCurrency(total);
     incomeEl.innerText = '+' + formatCurrency(income);
     expenseEl.innerText = '-' + formatCurrency(expense);
 
-    // Savings Rate
+    if (cardSubIncome) cardSubIncome.innerText = formatCurrency(income);
+    if (cardSubExpense) cardSubExpense.innerText = formatCurrency(expense);
+
+    // Savings Rate Percentage & Circular SVG Progress
     const savings = income - expense;
-    const savingsRate = income > 0 ? ((savings / income) * 100).toFixed(1) : 0;
+    const savingsRate = income > 0 ? Math.round((savings / income) * 100) : 0;
+    const clampedSavings = Math.max(0, Math.min(100, savingsRate));
+
     savingsRateEl.innerText = `${savingsRate}%`;
-    savingsProgressEl.style.width = `${Math.max(0, Math.min(100, savingsRate))}%`;
+    if (savingsRingText) savingsRingText.innerText = `${clampedSavings}%`;
+    if (savingsCirclePath) {
+        savingsCirclePath.setAttribute('stroke-dasharray', `${clampedSavings}, 100`);
+    }
 
     // Render Sub-components
     renderCharts(filtered);
-    renderStats(filtered, income, expense);
+    renderBudgetHealth(filtered, income, expense);
     renderRecentActivity();
     renderCalendar();
+    renderDailyBreakdown(selectedDashboardDate || new Date().toISOString().split('T')[0]);
 }
 
 // ===================================================
-// CHARTS (INCOME VS EXPENSE & EXPENSE DONUT)
+// CHARTS: INCOME VS EXPENSE (SMOOTH CURVE) & DONUT
 // ===================================================
 function renderCharts(currentTransactions) {
-    // 1. Income vs Expense Trend Chart (Filterable by chartTimeRange)
     renderTrendChart(currentTransactions);
-
-    // 2. Expense Breakdown Donut Chart
     renderExpenseBreakdown(currentTransactions);
 }
 
@@ -557,7 +674,6 @@ function renderTrendChart(currentTransactions) {
     const canvas = document.getElementById('incomeExpenseChart');
     const ctx = canvas.getContext('2d');
 
-    // Apply Time Range Filter for Trend Chart if specified
     let chartTransactions = [...currentTransactions];
     const now = new Date();
 
@@ -578,11 +694,6 @@ function renderTrendChart(currentTransactions) {
         chartTransactions = chartTransactions.filter(t => new Date(t.date || t.createdAt) >= cutoff);
     }
 
-    const expenses = chartTransactions.filter(t => t.type === 'expense');
-    const income = chartTransactions.filter(t => t.type === 'income');
-    const totalIncome = income.reduce((acc, t) => acc + Math.abs(t.amount), 0);
-    const totalExpense = expenses.reduce((acc, t) => acc + Math.abs(t.amount), 0);
-
     if (incomeExpenseChart) {
         incomeExpenseChart.destroy();
     }
@@ -596,25 +707,69 @@ function renderTrendChart(currentTransactions) {
         chartEmptyState.style.display = 'none';
     }
 
+    // Group transactions by month for the line trend curve
+    const monthsMap = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthlyIncome = new Array(12).fill(0);
+    const monthlyExpense = new Array(12).fill(0);
+
+    chartTransactions.forEach(t => {
+        const d = new Date(t.date || t.createdAt);
+        const m = d.getMonth();
+        if (t.amount > 0) monthlyIncome[m] += Math.abs(t.amount);
+        if (t.amount < 0) monthlyExpense[m] += Math.abs(t.amount);
+    });
+
+    // Create subtle gradients
+    const gradInc = ctx.createLinearGradient(0, 0, 0, 240);
+    gradInc.addColorStop(0, 'rgba(0, 217, 192, 0.25)');
+    gradInc.addColorStop(1, 'rgba(0, 217, 192, 0.0)');
+
+    const gradExp = ctx.createLinearGradient(0, 0, 0, 240);
+    gradExp.addColorStop(0, 'rgba(255, 92, 114, 0.25)');
+    gradExp.addColorStop(1, 'rgba(255, 92, 114, 0.0)');
+
     incomeExpenseChart = new Chart(ctx, {
-        type: 'bar',
+        type: 'line',
         data: {
-            labels: ['Income', 'Expense'],
-            datasets: [{
-                label: 'Amount (₹)',
-                data: [totalIncome, totalExpense],
-                backgroundColor: [
-                    '#00D9C0',
-                    '#FF5C72'
-                ],
-                borderRadius: 8,
-                borderSkipped: false,
-                barPercentage: 0.45
-            }]
+            labels: monthsMap,
+            datasets: [
+                {
+                    label: 'Income',
+                    data: monthlyIncome,
+                    borderColor: '#00D9C0',
+                    backgroundColor: gradInc,
+                    borderWidth: 2.5,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 3,
+                    pointHoverRadius: 6,
+                    pointBackgroundColor: '#00D9C0',
+                    pointBorderColor: '#0D0D10',
+                    pointBorderWidth: 2
+                },
+                {
+                    label: 'Expense',
+                    data: monthlyExpense,
+                    borderColor: '#FF5C72',
+                    backgroundColor: gradExp,
+                    borderWidth: 2.5,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 3,
+                    pointHoverRadius: 6,
+                    pointBackgroundColor: '#FF5C72',
+                    pointBorderColor: '#0D0D10',
+                    pointBorderWidth: 2
+                }
+            ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
             plugins: {
                 legend: { display: false },
                 tooltip: {
@@ -623,10 +778,21 @@ function renderTrendChart(currentTransactions) {
                     bodyColor: '#9996A3',
                     borderColor: '#30303A',
                     borderWidth: 1,
-                    padding: 10,
+                    padding: 12,
+                    boxPadding: 4,
+                    usePointStyle: true,
                     callbacks: {
+                        title: function(items) {
+                            return `${items[0].label} ${selectedYear}`;
+                        },
                         label: function (ctx) {
-                            return ' ' + ctx.dataset.label + ': ' + formatCurrency(ctx.parsed.y);
+                            return ` ${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y)}`;
+                        },
+                        afterBody: function(items) {
+                            const inc = items[0] ? items[0].parsed.y : 0;
+                            const exp = items[1] ? items[1].parsed.y : 0;
+                            const sav = inc - exp;
+                            return ` Savings: ${formatCurrency(sav)}`;
                         }
                     }
                 }
@@ -642,7 +808,8 @@ function renderTrendChart(currentTransactions) {
                         color: '#66636E',
                         font: { family: 'Inter', size: 11 },
                         callback: function (val) {
-                            return '₹' + val.toLocaleString('en-IN');
+                            if (val >= 1000) return '₹' + (val / 1000).toFixed(0) + 'K';
+                            return '₹' + val;
                         }
                     }
                 },
@@ -650,7 +817,7 @@ function renderTrendChart(currentTransactions) {
                     grid: { display: false },
                     ticks: {
                         color: '#9996A3',
-                        font: { family: 'Inter', size: 12, weight: '500' }
+                        font: { family: 'Inter', size: 11 }
                     }
                 }
             }
@@ -681,7 +848,6 @@ function renderExpenseBreakdown(currentTransactions) {
         breakdownEmptyState.style.display = 'none';
     }
 
-    // Aggregate by Category
     const catTotals = {};
     expenses.forEach(t => {
         const cat = t.category || 'General';
@@ -692,7 +858,6 @@ function renderExpenseBreakdown(currentTransactions) {
     const data = Object.values(catTotals);
     const colors = labels.map(cat => getCategoryInfo(cat).color);
 
-    // Update Donut Center Stat
     donutTotalSpent.innerText = formatCurrency(totalExpVal);
 
     expenseChart = new Chart(ctx, {
@@ -731,7 +896,7 @@ function renderExpenseBreakdown(currentTransactions) {
         }
     });
 
-    // Populate Legend List
+    // Populate Legend on Right
     categoryLegend.innerHTML = '';
     labels.forEach((cat, idx) => {
         const amount = data[idx];
@@ -751,7 +916,6 @@ function renderExpenseBreakdown(currentTransactions) {
             </div>
         `;
 
-        // Interactive: click category to filter history
         li.addEventListener('click', () => {
             historySearch.value = cat;
             historySearchTerm = cat.toLowerCase();
@@ -776,61 +940,49 @@ timeButtons.forEach(btn => {
 // ===================================================
 // WIDGETS: BUDGET HEALTH, RECENT ACTIVITY, CALENDAR
 // ===================================================
-function renderStats(currentTransactions, totalIncVal, totalExpVal) {
-    // Budget Progress (Using Income as baseline budget)
-    let budgetPercent = 0;
-    if (totalIncVal > 0) {
-        budgetPercent = Math.round((totalExpVal / totalIncVal) * 100);
-    } else if (totalExpVal > 0) {
-        budgetPercent = 100;
+function renderBudgetHealth(currentTransactions, totalIncVal, totalExpVal) {
+    // Budget benchmark: if income exists use income, otherwise standard target
+    const targetBudget = totalIncVal > 0 ? totalIncVal : 30000;
+    const spentPct = targetBudget > 0 ? Math.round((totalExpVal / targetBudget) * 100) : 0;
+
+    budgetTargetDisplay.innerHTML = `${formatCurrency(totalExpVal)} <span>/ ${formatCurrency(targetBudget)}</span>`;
+    budgetPercentEl.innerText = `${spentPct}%`;
+    budgetProgressEl.style.width = `${Math.min(100, spentPct)}%`;
+
+    const remaining = targetBudget - totalExpVal;
+    if (remaining >= 0) {
+        budgetRemainingText.innerText = `${formatCurrency(remaining)} remaining`;
+    } else {
+        budgetRemainingText.innerText = `${formatCurrency(Math.abs(remaining))} over limit`;
     }
 
-    budgetPercentEl.innerText = `${budgetPercent}%`;
-    budgetProgressEl.style.width = `${Math.min(100, budgetPercent)}%`;
-
-    // Dynamic Status States
-    if (budgetPercent <= 70) {
+    if (spentPct <= 70) {
         budgetStatusPill.className = 'budget-status-pill status-under';
-        budgetStatusPill.innerText = 'Under Control';
-        budgetProgressEl.style.backgroundColor = 'var(--savings-green)';
-        budgetMessageEl.innerText = `You've utilized ${budgetPercent}% of your income. Great pacing!`;
-    } else if (budgetPercent <= 95) {
+        budgetStatusPill.innerHTML = '<i class="fa-solid fa-circle" style="font-size: 6px;"></i> Under control';
+        budgetStatusMessage.innerText = `You've used ${spentPct}% of your monthly budget.`;
+    } else if (spentPct <= 95) {
         budgetStatusPill.className = 'budget-status-pill status-warning';
-        budgetStatusPill.innerText = 'Caution';
-        budgetProgressEl.style.backgroundColor = 'var(--warning-amber)';
-        budgetMessageEl.innerText = `You've utilized ${budgetPercent}% of your income. Spending is moderate.`;
+        budgetStatusPill.innerHTML = '<i class="fa-solid fa-circle" style="font-size: 6px;"></i> Warning';
+        budgetStatusMessage.innerText = `You've used ${spentPct}% of your monthly budget. Watch expenses.`;
     } else {
         budgetStatusPill.className = 'budget-status-pill status-over';
-        budgetStatusPill.innerText = 'Over Budget';
-        budgetProgressEl.style.backgroundColor = 'var(--expense-coral)';
-        const overAmt = totalExpVal - totalIncVal;
-        budgetMessageEl.innerText = overAmt > 0
-            ? `Expenses exceeded income by ${formatCurrency(overAmt)}.`
-            : `You've reached 100% of your income benchmark.`;
+        budgetStatusPill.innerHTML = '<i class="fa-solid fa-circle" style="font-size: 6px;"></i> Over budget';
+        budgetStatusMessage.innerText = `You've exceeded your monthly budget benchmark by ${formatCurrency(Math.abs(remaining))}.`;
     }
-
-    // Quick Stats
-    const expenses = currentTransactions.filter(t => t.type === 'expense');
-    const amounts = expenses.map(t => Math.abs(t.amount));
-    const highest = amounts.length > 0 ? Math.max(...amounts) : 0;
-    const avg = amounts.length > 0 ? (totalExpVal / amounts.length) : 0;
-
-    highestExpenseEl.innerText = formatCurrency(highest);
-    avgExpenseEl.innerText = formatCurrency(avg);
 }
 
 function renderRecentActivity() {
     const sorted = [...transactions]
         .sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt))
-        .slice(0, 4);
+        .slice(0, 5);
 
     recentList.innerHTML = '';
     if (sorted.length === 0) {
         recentList.innerHTML = `
-            <li class="empty-state-card" style="padding: 20px 0;">
-                <div class="empty-icon-wrap" style="width: 36px; height: 36px; font-size: 1rem;"><i class="fa-solid fa-sparkles"></i></div>
-                <div class="empty-state-title" style="font-size: 0.82rem;">No recent activity</div>
-                <div class="empty-state-desc">Transactions will appear here as you log them.</div>
+            <li class="empty-state-card" style="padding: 16px 0;">
+                <div class="empty-icon-wrap" style="width: 32px; height: 32px; font-size: 0.9rem;"><i class="fa-solid fa-sparkles"></i></div>
+                <div class="empty-state-title" style="font-size: 0.8rem;">No recent activity</div>
+                <div class="empty-state-desc">Logged transactions appear here.</div>
             </li>
         `;
         return;
@@ -848,7 +1000,7 @@ function renderRecentActivity() {
                 </div>
                 <div class="rec-details">
                     <h4>${escapeHTML(t.text)}</h4>
-                    <small>${catInfo.label} · ${new Date(t.date || t.createdAt).toLocaleDateString()}</small>
+                    <small>${catInfo.label} · ${formatDateMedium(t.date || t.createdAt)}</small>
                 </div>
             </div>
             <span class="rec-amount ${isExp ? 'exp' : 'inc'}">
@@ -862,8 +1014,7 @@ function renderRecentActivity() {
 function renderCalendar() {
     miniCalendar.innerHTML = '';
 
-    // Headers: S M T W T F S
-    const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     days.forEach(d => {
         const div = document.createElement('div');
         div.className = 'cal-head-cell';
@@ -871,15 +1022,13 @@ function renderCalendar() {
         miniCalendar.appendChild(div);
     });
 
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    if (calMonthTitle) calMonthTitle.innerText = `${monthNames[calViewMonth]} ${calViewYear}`;
+
     const now = new Date();
-    // Default to currently selected year/month or active today
-    const viewYear = (typeof selectedMonth === 'number') ? selectedYear : now.getFullYear();
-    const viewMonth = (typeof selectedMonth === 'number') ? selectedMonth : now.getMonth();
+    const firstDay = new Date(calViewYear, calViewMonth, 1).getDay();
+    const daysInMonth = new Date(calViewYear, calViewMonth + 1, 0).getDate();
 
-    const firstDay = new Date(viewYear, viewMonth, 1).getDay();
-    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-
-    // Empty lead slots
     for (let i = 0; i < firstDay; i++) {
         const emptyDiv = document.createElement('div');
         emptyDiv.className = 'cal-cell';
@@ -887,11 +1036,11 @@ function renderCalendar() {
         miniCalendar.appendChild(emptyDiv);
     }
 
-    // Map transactions in this month to day numbers
+    // Map activity for this month
     const dayActivity = {};
     transactions.forEach(t => {
         const d = new Date(t.date || t.createdAt);
-        if (d.getFullYear() === viewYear && d.getMonth() === viewMonth) {
+        if (d.getFullYear() === calViewYear && d.getMonth() === calViewMonth) {
             const dayNum = d.getDate();
             if (!dayActivity[dayNum]) dayActivity[dayNum] = { hasInc: false, hasExp: false };
             if (t.amount > 0) dayActivity[dayNum].hasInc = true;
@@ -899,27 +1048,23 @@ function renderCalendar() {
         }
     });
 
-    // Calendar Day Cells
     for (let i = 1; i <= daysInMonth; i++) {
         const cell = document.createElement('div');
         cell.className = 'cal-cell';
         cell.innerText = i;
 
-        const mStr = String(viewMonth + 1).padStart(2, '0');
+        const mStr = String(calViewMonth + 1).padStart(2, '0');
         const dStr = String(i).padStart(2, '0');
-        const dateStr = `${viewYear}-${mStr}-${dStr}`;
+        const dateStr = `${calViewYear}-${mStr}-${dStr}`;
 
-        // Today highlight
-        if (i === now.getDate() && viewMonth === now.getMonth() && viewYear === now.getFullYear()) {
+        if (i === now.getDate() && calViewMonth === now.getMonth() && calViewYear === now.getFullYear()) {
             cell.classList.add('today');
         }
 
-        // Active selection
         if (selectedDashboardDate === dateStr) {
             cell.classList.add('active-selected');
         }
 
-        // Add transaction dots
         if (dayActivity[i]) {
             const markerWrap = document.createElement('div');
             markerWrap.className = 'cal-marker';
@@ -936,35 +1081,89 @@ function renderCalendar() {
             cell.appendChild(markerWrap);
         }
 
-        // Click interaction: select date
         cell.addEventListener('click', () => {
             if (selectedDashboardDate === dateStr) {
                 selectedDashboardDate = null;
-                calendarFeedback.style.display = 'none';
             } else {
                 selectedDashboardDate = dateStr;
-                calSelectedText.innerText = `Filtered to: ${new Date(dateStr + 'T00:00:00').toLocaleDateString()}`;
-                calendarFeedback.style.display = 'flex';
             }
             updateValues();
             renderHistoryDOM();
             renderCalendar();
+            renderDailyBreakdown(dateStr);
         });
 
         miniCalendar.appendChild(cell);
     }
 }
 
-calClearBtn.addEventListener('click', () => {
-    selectedDashboardDate = null;
-    calendarFeedback.style.display = 'none';
-    updateValues();
-    renderHistoryDOM();
-    renderCalendar();
-});
+if (calPrevMonth) {
+    calPrevMonth.addEventListener('click', () => {
+        calViewMonth--;
+        if (calViewMonth < 0) {
+            calViewMonth = 11;
+            calViewYear--;
+        }
+        renderCalendar();
+    });
+}
+if (calNextMonth) {
+    calNextMonth.addEventListener('click', () => {
+        calViewMonth++;
+        if (calViewMonth > 11) {
+            calViewMonth = 0;
+            calViewYear++;
+        }
+        renderCalendar();
+    });
+}
+
+function renderDailyBreakdown(targetDateStr) {
+    if (!dayBreakdownTitle || !dayTransactionsList) return;
+
+    const dObj = new Date(targetDateStr + 'T00:00:00');
+    dayBreakdownTitle.innerText = `Transactions on ${dObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+
+    const dayTrans = transactions.filter(t => {
+        const d = new Date(t.date || t.createdAt);
+        const tY = d.getFullYear();
+        const tM = String(d.getMonth() + 1).padStart(2, '0');
+        const tD = String(d.getDate()).padStart(2, '0');
+        return `${tY}-${tM}-${tD}` === targetDateStr;
+    });
+
+    dayTransactionsList.innerHTML = '';
+    if (dayTrans.length === 0) {
+        dayTransactionsList.innerHTML = '<li class="text-muted" style="font-size: 0.74rem; text-align: center; padding: 12px 0;">No transactions on this date</li>';
+        if (dayTransTotal) dayTransTotal.innerText = '₹0.00';
+        return;
+    }
+
+    let sum = 0;
+    dayTrans.forEach(t => {
+        sum += t.amount;
+        const isExp = t.amount < 0;
+        const li = document.createElement('li');
+        li.className = 'day-trans-item';
+        li.innerHTML = `
+            <div class="day-trans-left">
+                <i class="fa-solid ${isExp ? 'fa-arrow-down' : 'fa-arrow-up'}" style="color: ${isExp ? 'var(--expense-coral)' : 'var(--income-teal)'}; font-size: 0.7rem;"></i>
+                <span class="day-trans-amt ${isExp ? 'exp' : 'inc'}">${isExp ? '-' : '+'}${formatCurrency(t.amount)}</span>
+                <span>${escapeHTML(t.text)}</span>
+            </div>
+            <span class="day-trans-time">${new Date(t.date || t.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+        `;
+        dayTransactionsList.appendChild(li);
+    });
+
+    if (dayTransTotal) {
+        dayTransTotal.innerText = (sum < 0 ? '-' : '+') + formatCurrency(sum);
+        dayTransTotal.style.color = sum >= 0 ? 'var(--income-teal)' : 'var(--expense-coral)';
+    }
+}
 
 // ===================================================
-// HISTORY LIST (SEARCH, FILTERS, SORT)
+// HISTORY LIST: STRICTLY CONSTRAINED VERTICAL SCROLL, NO OVERLAPPING
 // ===================================================
 function renderHistoryDOM() {
     let listData = getFilteredTransactions();
@@ -977,14 +1176,19 @@ function renderHistoryDOM() {
         );
     }
 
-    // 2. Type Filter (All, Income, Expense)
+    // 2. Sidebar Category Filter
+    if (sidebarCategoryFilter) {
+        listData = listData.filter(t => (t.category || '').toLowerCase() === sidebarCategoryFilter);
+    }
+
+    // 3. Type Filter (All, Income, Expense)
     if (historyTypeFilter === 'income') {
         listData = listData.filter(t => t.amount > 0);
     } else if (historyTypeFilter === 'expense') {
         listData = listData.filter(t => t.amount < 0);
     }
 
-    // 3. Sorting
+    // 4. Sorting
     listData.sort((a, b) => {
         const dateA = new Date(a.date || a.createdAt);
         const dateB = new Date(b.date || b.createdAt);
@@ -995,7 +1199,7 @@ function renderHistoryDOM() {
         return 0;
     });
 
-    // 4. Render Items
+    // 5. Render Rows - Guaranteed NO VERTICAL OVERLAP
     historyList.innerHTML = '';
     if (listData.length === 0) {
         historyEmptyState.style.display = 'flex';
@@ -1006,31 +1210,30 @@ function renderHistoryDOM() {
             const catInfo = getCategoryInfo(transaction.category);
             const tDate = new Date(transaction.date || transaction.createdAt);
 
-            const li = document.createElement('li');
-            li.className = 'history-item';
-            li.innerHTML = `
-                <div class="hist-left">
-                    <div class="hist-cat-icon ${isExp ? 'exp' : 'inc'}">
+            const row = document.createElement('div');
+            row.className = 'history-table-row';
+            row.innerHTML = `
+                <div class="h-col-date">${formatDateMedium(tDate)}</div>
+                <div class="h-col-desc">
+                    <div class="h-desc-icon ${isExp ? 'exp' : 'inc'}">
                         <i class="fa-solid ${catInfo.icon}"></i>
                     </div>
-                    <div class="hist-info">
-                        <h4>${escapeHTML(transaction.text)}</h4>
-                        <div class="hist-meta">
-                            <span class="hist-category-tag">${catInfo.label}</span>
-                            <span>${tDate.toLocaleDateString()}</span>
-                        </div>
-                    </div>
+                    <span class="h-desc-text" title="${escapeHTML(transaction.text)}">${escapeHTML(transaction.text)}</span>
                 </div>
-                <div class="hist-right">
-                    <span class="hist-amount ${isExp ? 'exp' : 'inc'}">
-                        ${isExp ? '-' : '+'}${formatCurrency(transaction.amount)}
-                    </span>
-                    <button class="hist-delete-btn" onclick="removeTransaction('${transaction._id}')" title="Move to Recycle Bin">
-                        <i class="fa-solid fa-trash-can"></i>
+                <div class="h-col-cat">${catInfo.label}</div>
+                <div class="h-col-type">
+                    <span class="h-badge-type ${isExp ? 'exp' : 'inc'}">${isExp ? 'Expense' : 'Income'}</span>
+                </div>
+                <div class="h-col-amount ${isExp ? 'exp' : 'inc'}">
+                    ${isExp ? '-' : '+'}${formatCurrency(transaction.amount)}
+                </div>
+                <div class="h-col-actions">
+                    <button type="button" class="h-action-btn" onclick="removeTransaction('${transaction._id}')" title="Move to Recycle Bin">
+                        <i class="fa-regular fa-trash-can"></i>
                     </button>
                 </div>
             `;
-            historyList.appendChild(li);
+            historyList.appendChild(row);
         });
     }
 }
@@ -1038,6 +1241,7 @@ function renderHistoryDOM() {
 // History Controls Event Listeners
 historySearch.addEventListener('input', (e) => {
     historySearchTerm = e.target.value.toLowerCase().trim();
+    if (headerSearchInput) headerSearchInput.value = e.target.value;
     renderHistoryDOM();
 });
 
@@ -1074,32 +1278,14 @@ function escapeHTML(str) {
     }[tag] || tag));
 }
 
-// User Profile & Dropdown
-const loggedUser = JSON.parse(localStorage.getItem('user'));
-if (loggedUser && userDisplay) {
-    userDisplay.innerText = `Hello, ${loggedUser.username || 'Himanshu'}`;
-}
-
-if (userMenuBtn) {
-    userMenuBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        userDropdown.classList.toggle('show');
-    });
-
-    window.addEventListener('click', (e) => {
-        if (!userMenuBtn.contains(e.target) && !userDropdown.contains(e.target)) {
-            userDropdown.classList.remove('show');
-        }
-    });
-}
-
 // Form Submission
 form.addEventListener('submit', addTransaction);
 
 // App Initialization
 function init() {
+    initUserProfile();
     renderYears();
-    initMonthSelection();
+    initPeriodAndMonthSelection();
     syncDateInput();
     updateValues();
     renderHistoryDOM();

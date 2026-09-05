@@ -22,7 +22,7 @@
         <!-- ================= TOP HEADER ================= -->
         <header class="app-header">
             <div class="header-left">
-                <button id="toggle-sidebar" class="menu-btn" title="Filter & Menu" aria-label="Open Filter Sidebar">
+                <button id="toggle-sidebar" class="menu-btn" title="Open Filter Sidebar" aria-label="Open Filter Sidebar">
                     <i class="fa-solid fa-bars"></i>
                 </button>
                 <div class="brand-section">
@@ -36,16 +36,41 @@
                 </div>
             </div>
 
+            <!-- Global Search in Header -->
+            <div class="header-center-search">
+                <i class="fa-solid fa-magnifying-glass header-search-icon"></i>
+                <input type="text" id="header-search-input" class="header-search-input" placeholder="Search transactions..." />
+            </div>
+
+            <!-- Header Right: Notification & Profile -->
             <div class="header-right">
+                <button class="notification-btn" title="Notifications" aria-label="Notifications">
+                    <i class="fa-regular fa-bell"></i>
+                </button>
+
+                <!-- Profile Badge (Shows Avatar + Hello, Himanshu + Manage your account) -->
                 <div class="user-profile-badge" id="user-menu-btn" tabindex="0" role="button" aria-haspopup="true">
-                    <div class="user-avatar">
-                        <i class="fa-solid fa-user"></i>
+                    <div class="user-avatar" id="user-avatar-initial">H</div>
+                    <div class="user-text-col">
+                        <span id="user-display" class="user-name">Hello, Himanshu</span>
+                        <span class="user-subtext">Manage your account</span>
                     </div>
-                    <span id="user-display" class="user-name">Hello, User</span>
                     <i class="fa-solid fa-chevron-down user-chevron"></i>
                 </div>
+
+                <!-- Dropdown Menu -->
                 <div class="profile-dropdown-menu" id="user-dropdown">
-                    <a href="#" onclick="logout()" class="dropdown-item-link">
+                    <div class="dropdown-user-header">
+                        <strong id="dropdown-username">Himanshu</strong>
+                        <span id="dropdown-email">user@example.com</span>
+                    </div>
+                    <a href="#" id="open-account-btn" class="dropdown-item-link">
+                        <i class="fa-regular fa-user"></i> Manage Account
+                    </a>
+                    <a href="#" id="open-bin-from-menu" class="dropdown-item-link">
+                        <i class="fa-solid fa-trash-arrow-up"></i> Recycle Bin
+                    </a>
+                    <a href="#" onclick="logout()" class="dropdown-item-link danger-link">
                         <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
                     </a>
                 </div>
@@ -57,88 +82,133 @@
             <!-- Total Balance -->
             <div class="fintech-card summary-card card-balance" id="card-filter-balance" title="Click to view all transactions">
                 <div class="summary-card-top">
-                    <span class="summary-label">Total Balance</span>
-                    <div class="summary-icon">
-                        <i class="fa-solid fa-vault"></i>
+                    <div class="summary-label-wrap">
+                        <div class="summary-icon-box">
+                            <i class="fa-solid fa-wallet"></i>
+                        </div>
+                        <span class="summary-label">Total Balance</span>
                     </div>
+                    <i class="fa-solid fa-arrow-up-right-from-square summary-arrow-corner"></i>
                 </div>
-                <div class="summary-value" id="total-balance">₹0.00</div>
-                <div class="summary-meta">
-                    <span class="summary-badge period">Lifetime Wallet</span>
-                    <span class="text-muted"><i class="fa-solid fa-chart-line"></i> Overall</span>
+                <div class="summary-middle-row">
+                    <div class="summary-value" id="total-balance">₹0.00</div>
+                </div>
+                <div class="summary-bottom-row">
+                    <span class="trend-positive"><i class="fa-solid fa-arrow-up"></i> 12.4% this month</span>
+                    <div class="sub-breakdown">
+                        <span>Income <strong id="card-sub-income" style="color: var(--income-teal);">₹0</strong></span>
+                        <span>Expense <strong id="card-sub-expense" style="color: var(--expense-coral);">₹0</strong></span>
+                    </div>
                 </div>
             </div>
 
             <!-- Income -->
             <div class="fintech-card summary-card card-income" id="card-filter-income" title="Click to filter Income in History">
                 <div class="summary-card-top">
-                    <span class="summary-label">Income</span>
-                    <div class="summary-icon">
-                        <i class="fa-solid fa-arrow-down-left"></i>
+                    <div class="summary-label-wrap">
+                        <div class="summary-icon-box">
+                            <i class="fa-solid fa-arrow-up"></i>
+                        </div>
+                        <span class="summary-label">Income</span>
+                    </div>
+                    <i class="fa-solid fa-arrow-up-right-from-square summary-arrow-corner"></i>
+                </div>
+                <div class="summary-middle-row">
+                    <div class="summary-value" id="total-income">₹0.00</div>
+                    <div class="summary-mini-graphic">
+                        <div class="mini-bar mini-bar-inc" style="height: 12px;"></div>
+                        <div class="mini-bar mini-bar-inc" style="height: 18px;"></div>
+                        <div class="mini-bar mini-bar-inc" style="height: 14px;"></div>
+                        <div class="mini-bar mini-bar-inc" style="height: 24px;"></div>
                     </div>
                 </div>
-                <div class="summary-value" id="total-income">₹0.00</div>
-                <div class="summary-meta">
-                    <span class="summary-badge period">This Period</span>
-                    <span style="color: var(--income-teal);"><i class="fa-solid fa-arrow-trend-up"></i> Received</span>
+                <div class="summary-bottom-row">
+                    <span class="trend-positive"><i class="fa-solid fa-arrow-up"></i> 8.2% vs last month</span>
                 </div>
             </div>
 
             <!-- Expense -->
             <div class="fintech-card summary-card card-expense" id="card-filter-expense" title="Click to filter Expenses in History">
                 <div class="summary-card-top">
-                    <span class="summary-label">Expense</span>
-                    <div class="summary-icon">
-                        <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                    <div class="summary-label-wrap">
+                        <div class="summary-icon-box">
+                            <i class="fa-solid fa-arrow-down"></i>
+                        </div>
+                        <span class="summary-label">Expense</span>
+                    </div>
+                    <i class="fa-solid fa-arrow-up-right-from-square summary-arrow-corner"></i>
+                </div>
+                <div class="summary-middle-row">
+                    <div class="summary-value" id="total-expense">₹0.00</div>
+                    <div class="summary-mini-graphic">
+                        <div class="mini-bar mini-bar-exp" style="height: 20px;"></div>
+                        <div class="mini-bar mini-bar-exp" style="height: 15px;"></div>
+                        <div class="mini-bar mini-bar-exp" style="height: 25px;"></div>
+                        <div class="mini-bar mini-bar-exp" style="height: 12px;"></div>
                     </div>
                 </div>
-                <div class="summary-value" id="total-expense">₹0.00</div>
-                <div class="summary-meta">
-                    <span class="summary-badge period">This Period</span>
-                    <span style="color: var(--expense-coral);"><i class="fa-solid fa-arrow-trend-down"></i> Spent</span>
+                <div class="summary-bottom-row">
+                    <span class="trend-negative"><i class="fa-solid fa-arrow-down"></i> 3.1% vs last month</span>
                 </div>
             </div>
 
             <!-- Savings Rate -->
-            <div class="fintech-card summary-card card-savings" title="Savings relative to Income">
+            <div class="fintech-card summary-card card-savings" title="Savings percentage">
                 <div class="summary-card-top">
-                    <span class="summary-label">Savings Rate</span>
-                    <div class="summary-icon">
-                        <i class="fa-solid fa-piggy-bank"></i>
+                    <div class="summary-label-wrap">
+                        <div class="summary-icon-box">
+                            <i class="fa-solid fa-leaf"></i>
+                        </div>
+                        <span class="summary-label">Savings Rate</span>
+                    </div>
+                    <i class="fa-solid fa-arrow-up-right-from-square summary-arrow-corner"></i>
+                </div>
+                <div class="summary-middle-row">
+                    <div class="summary-value" id="savings-rate">0%</div>
+                    <div class="savings-ring-wrap">
+                        <svg class="savings-ring-svg" viewBox="0 0 36 36">
+                            <path class="savings-ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="3.5" />
+                            <path id="savings-circle-path" class="savings-ring-circle" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#00D9C0" stroke-width="3.5" stroke-linecap="round" />
+                        </svg>
+                        <span id="savings-ring-text" class="savings-ring-val">0%</span>
                     </div>
                 </div>
-                <div class="summary-value" id="savings-rate">0%</div>
-                <div class="savings-progress-track">
-                    <div id="savings-progress" class="savings-progress-fill" style="width: 0%;"></div>
+                <div class="summary-bottom-row">
+                    <span class="trend-positive"><i class="fa-solid fa-arrow-up"></i> 5.4% vs last month</span>
                 </div>
             </div>
         </section>
 
         <!-- ================= 2. MAIN ANALYTICS ROW ================= -->
         <section class="analytics-grid">
-            <!-- Left: Income vs Expense Trend -->
+            <!-- Left: Income vs Expense Smooth Trend Chart -->
             <div class="fintech-card">
                 <div class="card-header-clean">
                     <h3 class="card-title-clean">
-                        <i class="fa-solid fa-chart-simple"></i> Income vs Expense
+                        <i class="fa-solid fa-chart-line"></i> Income vs Expense
                     </h3>
                     <div class="chart-header-actions" id="chart-time-selectors">
-                        <button type="button" class="time-pill-btn active" data-range="ALL">ALL</button>
                         <button type="button" class="time-pill-btn" data-range="7D">7D</button>
                         <button type="button" class="time-pill-btn" data-range="1M">1M</button>
                         <button type="button" class="time-pill-btn" data-range="3M">3M</button>
                         <button type="button" class="time-pill-btn" data-range="6M">6M</button>
-                        <button type="button" class="time-pill-btn" data-range="1Y">1Y</button>
+                        <button type="button" class="time-pill-btn active" data-range="1Y">1Y</button>
+                        <button type="button" class="time-pill-btn" data-range="ALL">ALL</button>
                     </div>
                 </div>
 
                 <div class="chart-container-box">
                     <canvas id="incomeExpenseChart"></canvas>
                     <div id="chart-empty-state" class="empty-state-card" style="display: none; height: 100%;">
-                        <div class="empty-icon-wrap"><i class="fa-solid fa-chart-column"></i></div>
+                        <div class="empty-icon-wrap"><i class="fa-solid fa-chart-line"></i></div>
                         <div class="empty-state-title">Start tracking your money</div>
                         <div class="empty-state-desc">Add an income or expense to see your financial trends.</div>
                     </div>
+                </div>
+
+                <div class="chart-legend-bottom">
+                    <span class="legend-item-pill"><span class="dot-inc"></span> Income</span>
+                    <span class="legend-item-pill"><span class="dot-exp"></span> Expense</span>
                 </div>
             </div>
 
@@ -148,6 +218,11 @@
                     <h3 class="card-title-clean">
                         <i class="fa-solid fa-chart-pie"></i> Expense Breakdown
                     </h3>
+                    <select class="select-clean" style="width: auto; padding: 3px 24px 3px 10px; font-size: 0.72rem; border-radius: var(--radius-sm);" title="Period">
+                        <option>This Month</option>
+                        <option>Entire Year</option>
+                        <option>Lifetime</option>
+                    </select>
                 </div>
 
                 <div class="donut-layout">
@@ -155,7 +230,7 @@
                         <canvas id="expenseChart"></canvas>
                         <div class="donut-center-stat" id="donut-center-stat">
                             <div class="donut-center-val" id="donut-total-spent">₹0</div>
-                            <div class="donut-center-sub">Spent</div>
+                            <div class="donut-center-sub">spent</div>
                         </div>
                     </div>
 
@@ -163,7 +238,7 @@
                         <!-- JS populated with category rows -->
                     </ul>
 
-                    <div id="breakdown-empty-state" class="empty-state-card" style="display: none; padding: 20px 0;">
+                    <div id="breakdown-empty-state" class="empty-state-card" style="display: none; padding: 20px 0; width: 100%;">
                         <div class="empty-icon-wrap"><i class="fa-solid fa-receipt"></i></div>
                         <div class="empty-state-title">No expenses yet</div>
                         <div class="empty-state-desc">Add your first expense transaction to see where your money goes.</div>
@@ -172,27 +247,41 @@
             </div>
         </section>
 
-        <!-- ================= 3. SECONDARY ANALYTICS (Widgets) ================= -->
+        <!-- ================= 3. SECONDARY ANALYTICS (Calendar, Budget, Activity) ================= -->
         <section class="widgets-grid">
-            <!-- Calendar Widget -->
+            <!-- Calendar Widget (Split View: Calendar Grid + Daily Transactions) -->
             <div class="fintech-card">
                 <div class="card-header-clean">
                     <h3 class="card-title-clean">
-                        <i class="fa-regular fa-calendar"></i> Calendar Activity
+                        <i class="fa-regular fa-calendar"></i> Calendar
                     </h3>
-                    <div class="calendar-legend-mini">
-                        <span title="Income day"><i class="fa-solid fa-circle legend-dot-income" style="font-size: 6px;"></i> Income</span>
-                        <span title="Expense day"><i class="fa-solid fa-circle legend-dot-expense" style="font-size: 6px;"></i> Expense</span>
-                    </div>
                 </div>
 
-                <div class="calendar-widget-body">
-                    <div id="mini-calendar" class="calendar-grid-modern">
-                        <!-- JS Generated -->
+                <div class="calendar-split-container">
+                    <!-- Left: Month Grid -->
+                    <div class="calendar-left-col">
+                        <div class="cal-nav-row">
+                            <button type="button" class="cal-nav-btn" id="cal-prev-month"><i class="fa-solid fa-chevron-left"></i></button>
+                            <span id="cal-month-title">September 2026</span>
+                            <button type="button" class="cal-nav-btn" id="cal-next-month"><i class="fa-solid fa-chevron-right"></i></button>
+                        </div>
+                        <div id="mini-calendar" class="calendar-grid-modern">
+                            <!-- JS Generated -->
+                        </div>
                     </div>
-                    <div id="calendar-selected-feedback" class="cal-selected-info" style="display: none;">
-                        <span id="cal-selected-text">Selected date</span>
-                        <button type="button" id="cal-clear-btn" class="time-pill-btn" style="padding: 2px 6px;">Clear</button>
+
+                    <!-- Right: Daily Breakdown -->
+                    <div class="calendar-right-col">
+                        <div>
+                            <div class="day-details-title" id="day-breakdown-title">Transactions on Sep 5, 2026</div>
+                            <ul class="day-transactions-list" id="day-transactions-list">
+                                <!-- JS Generated -->
+                            </ul>
+                        </div>
+                        <div class="day-trans-total-row">
+                            <span>Total</span>
+                            <span id="day-trans-total" style="color: var(--income-teal);">+ ₹0.00</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -201,32 +290,34 @@
             <div class="fintech-card">
                 <div class="card-header-clean">
                     <h3 class="card-title-clean">
-                        <i class="fa-solid fa-shield-heart"></i> Budget Health
+                        <i class="fa-solid fa-bullseye"></i> Budget Health
                     </h3>
-                    <span id="budget-status-pill" class="budget-status-pill status-under">Under Control</span>
+                    <select class="select-clean" style="width: auto; padding: 2px 22px 2px 8px; font-size: 0.72rem; border-radius: var(--radius-sm);" title="Budget Period">
+                        <option>This Month</option>
+                    </select>
                 </div>
 
                 <div>
-                    <div class="d-flex justify-content-between text-secondary" style="font-size: 0.8rem;">
-                        <span>Spent vs Income</span>
-                        <span id="budget-percent" class="fw-bold text-main">0%</span>
+                    <div class="budget-amount-target" id="budget-target-display">
+                        ₹18,400 <span>/ ₹30,000</span>
                     </div>
-                    <div class="budget-progress-track">
-                        <div id="budget-progress" class="budget-progress-fill" style="width: 0%; background-color: var(--savings-green);"></div>
-                    </div>
-                    <p id="budget-status-message" class="text-muted" style="font-size: 0.75rem; margin-top: 6px;">
-                        Income serves as your monthly benchmark.
-                    </p>
-                </div>
 
-                <div class="budget-stats-row">
-                    <div class="budget-stat-item">
-                        <span>Highest Expense</span>
-                        <strong id="highest-expense">₹0.00</strong>
+                    <div class="budget-progress-track">
+                        <div id="budget-progress" class="budget-progress-fill" style="width: 61%;"></div>
                     </div>
-                    <div class="budget-stat-item">
-                        <span>Avg Spending</span>
-                        <strong id="avg-expense">₹0.00</strong>
+
+                    <div class="d-flex justify-content-between align-items-center" style="font-size: 0.75rem;">
+                        <span id="budget-remaining-text" style="color: var(--text-muted);">₹11,600 remaining</span>
+                        <span id="budget-percent" style="font-weight: 600; color: var(--text-main);">61%</span>
+                    </div>
+
+                    <div style="margin-top: 14px;">
+                        <span id="budget-status-pill" class="budget-status-pill status-under">
+                            <i class="fa-solid fa-circle" style="font-size: 6px;"></i> Under control
+                        </span>
+                        <p id="budget-status-message" class="budget-footer-text">
+                            You've used 61% of your monthly budget.
+                        </p>
                     </div>
                 </div>
             </div>
@@ -235,8 +326,9 @@
             <div class="fintech-card">
                 <div class="card-header-clean">
                     <h3 class="card-title-clean">
-                        <i class="fa-solid fa-bolt"></i> Recent Activity
+                        <i class="fa-solid fa-wave-square"></i> Recent Activity
                     </h3>
+                    <a href="#history-section" style="font-size: 0.72rem; color: var(--text-secondary); text-decoration: none;">View All</a>
                 </div>
 
                 <ul id="recent-list" class="recent-activity-list">
@@ -246,7 +338,7 @@
         </section>
 
         <!-- ================= 4. BOTTOM WORKFLOW (Add & History) ================= -->
-        <section class="bottom-workflow-grid">
+        <section class="bottom-workflow-grid" id="history-section">
             <!-- Left: Add Transaction Form -->
             <div class="fintech-card">
                 <div class="card-header-clean">
@@ -256,18 +348,6 @@
                 </div>
 
                 <form id="transaction-form" autocomplete="off">
-                    <!-- Segmented Income / Expense Toggle -->
-                    <div class="type-segmented-control">
-                        <label class="type-segment-btn type-income active" id="btn-type-income">
-                            <input type="radio" name="type" value="income" checked>
-                            <i class="fa-solid fa-arrow-down-left"></i> + Income
-                        </label>
-                        <label class="type-segment-btn type-expense" id="btn-type-expense">
-                            <input type="radio" name="type" value="expense">
-                            <i class="fa-solid fa-arrow-up-right-from-square"></i> - Expense
-                        </label>
-                    </div>
-
                     <!-- Description -->
                     <div class="form-group-clean">
                         <label for="text" class="form-label-clean">Description</label>
@@ -287,7 +367,7 @@
                         <div class="form-group-clean">
                             <label for="category" class="form-label-clean">Category</label>
                             <select id="category" class="select-clean">
-                                <option value="General">General</option>
+                                <option value="General">Select category</option>
                                 <option value="Food">Food & Dining</option>
                                 <option value="Transport">Transportation</option>
                                 <option value="Shopping">Shopping</option>
@@ -300,6 +380,21 @@
                         </div>
                     </div>
 
+                    <!-- Type Segmented Control -->
+                    <div class="form-group-clean">
+                        <label class="form-label-clean">Type</label>
+                        <div class="type-segmented-control">
+                            <label class="type-segment-btn type-income active" id="btn-type-income">
+                                <input type="radio" name="type" value="income" checked>
+                                <i class="fa-solid fa-plus"></i> Income
+                            </label>
+                            <label class="type-segment-btn type-expense" id="btn-type-expense">
+                                <input type="radio" name="type" value="expense">
+                                <i class="fa-solid fa-minus"></i> Expense
+                            </label>
+                        </div>
+                    </div>
+
                     <!-- Date -->
                     <div class="form-group-clean">
                         <label for="date" class="form-label-clean">Date</label>
@@ -307,57 +402,71 @@
                     </div>
 
                     <button type="submit" class="btn-primary-purple" id="submit-btn">
-                        <i class="fa-solid fa-plus"></i> Add Transaction
+                        Add Transaction
                     </button>
                 </form>
             </div>
 
-            <!-- Right: History Section -->
-            <div class="fintech-card">
-                <div class="card-header-clean">
+            <!-- Right: History Section (GUARANTEED NO OVERLAP & CONSTRAINED SCROLL) -->
+            <div class="fintech-card history-card-wrap">
+                <div class="card-header-clean" style="margin-bottom: 8px;">
                     <h3 class="card-title-clean">
-                        <i class="fa-solid fa-clock-rotate-left"></i> Transaction History
+                        <i class="fa-solid fa-clock-rotate-left"></i> History
                     </h3>
                 </div>
 
-                <!-- History Controls (Search, Filters, Sort) -->
-                <div class="history-controls">
-                    <div class="history-search-row">
-                        <div class="search-input-box">
-                            <i class="fa-solid fa-magnifying-glass search-icon"></i>
-                            <input type="text" id="history-search" class="input-clean" placeholder="Search transactions by title or category..." />
-                        </div>
-                        <select id="history-sort" class="select-clean sort-select" title="Sort transactions">
-                            <option value="newest">Newest</option>
-                            <option value="oldest">Oldest</option>
-                            <option value="highest">Highest Amount</option>
-                            <option value="lowest">Lowest Amount</option>
-                        </select>
+                <!-- History Fixed Toolbar -->
+                <div class="history-toolbar">
+                    <div class="history-pill-group">
+                        <button type="button" class="history-pill-btn active" data-type-filter="all" id="filter-pill-all">All</button>
+                        <button type="button" class="history-pill-btn" data-type-filter="income" id="filter-pill-income">Income</button>
+                        <button type="button" class="history-pill-btn" data-type-filter="expense" id="filter-pill-expense">Expense</button>
                     </div>
 
-                    <div class="history-filter-pills">
-                        <div class="pill-filter-group">
-                            <button type="button" class="history-pill-btn active" data-type-filter="all" id="filter-pill-all">All</button>
-                            <button type="button" class="history-pill-btn" data-type-filter="income" id="filter-pill-income">Income</button>
-                            <button type="button" class="history-pill-btn" data-type-filter="expense" id="filter-pill-expense">Expense</button>
-                        </div>
+                    <div class="history-search-input-box">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="history-search" class="input-clean" placeholder="Search transactions..." />
+                    </div>
+
+                    <select id="history-sort" class="select-clean sort-select-clean" title="Sort transactions">
+                        <option value="newest">Newest First</option>
+                        <option value="oldest">Oldest First</option>
+                        <option value="highest">Highest Amount</option>
+                        <option value="lowest">Lowest Amount</option>
+                    </select>
+
+                    <button id="delete-all-btn" class="btn-danger-outline" title="Delete All Active Transactions">
+                        <i class="fa-solid fa-trash-can"></i> Delete All
+                    </button>
+                </div>
+
+                <!-- Fixed Table Columns Header -->
+                <div class="history-table-header">
+                    <span>Date</span>
+                    <span>Description</span>
+                    <span>Category</span>
+                    <span>Type</span>
+                    <span style="text-align: right;">Amount</span>
+                    <span style="text-align: right;">Actions</span>
+                </div>
+
+                <!-- Dedicated Scrollable Transaction List - NEVER OVERLAPS -->
+                <div class="history-scroll-container">
+                    <div id="list">
+                        <!-- Dynamic transaction rows inserted here -->
+                    </div>
+
+                    <div id="history-empty-state" class="empty-state-card" style="display: none;">
+                        <div class="empty-icon-wrap"><i class="fa-solid fa-inbox"></i></div>
+                        <div class="empty-state-title">No transactions found</div>
+                        <div class="empty-state-desc">Add a transaction or try clearing your filters.</div>
                     </div>
                 </div>
 
-                <!-- History Transactions List -->
-                <ul id="list" class="history-list">
-                    <!-- Transactions dynamically inserted here -->
-                </ul>
-
-                <div id="history-empty-state" class="empty-state-card" style="display: none;">
-                    <div class="empty-icon-wrap"><i class="fa-solid fa-inbox"></i></div>
-                    <div class="empty-state-title">No transactions yet</div>
-                    <div class="empty-state-desc">Add your first transaction to get started with your budget.</div>
+                <!-- History Fixed Footer -->
+                <div class="history-card-footer">
+                    <span class="history-quote-text">"Discipline today, freedom tomorrow"</span>
                 </div>
-
-                <button id="delete-all-btn" class="btn-secondary-danger">
-                    <i class="fa-solid fa-trash-can"></i> Delete All Active Logs
-                </button>
             </div>
         </section>
     </div>
@@ -365,46 +474,87 @@
     <!-- ================= FILTER SIDEBAR ================= -->
     <aside id="sidebar" class="sidebar" aria-label="Filter Sidebar">
         <div class="sidebar-header">
-            <h2><i class="fa-solid fa-filter" style="color: var(--primary-purple);"></i> Filter Dashboard</h2>
+            <h2><i class="fa-solid fa-filter" style="color: var(--primary-purple);"></i> Filter</h2>
             <button id="close-sidebar" class="close-btn" aria-label="Close Filter Sidebar">
                 <i class="fa-solid fa-xmark"></i>
             </button>
         </div>
         <div class="sidebar-content">
+            <!-- Year -->
             <div class="filter-group">
                 <div class="filter-group-title">Year</div>
-                <ul id="year-list" class="filter-list">
-                    <!-- Years dynamically populated by JS -->
-                </ul>
+                <select id="year-select" class="select-clean" style="padding: 6px 12px; font-size: 0.8rem;">
+                    <!-- JS Populated -->
+                </select>
+                <!-- Fallback UL for compatibility -->
+                <ul id="year-list" class="filter-list" style="display: none;"></ul>
             </div>
 
+            <!-- Period -->
             <div class="filter-group">
-                <div class="filter-group-title">Period & Month</div>
-                <ul id="month-list" class="filter-list">
-                    <li data-month="lifetime" class="special-option">
-                        <i class="fa-solid fa-infinity me-2"></i> Lifetime Record
+                <div class="filter-group-title">Period</div>
+                <div class="sidebar-period-pills">
+                    <button type="button" class="sidebar-pill-btn active" id="period-lifetime">Lifetime</button>
+                    <button type="button" class="sidebar-pill-btn" id="period-entire-year">Entire Year</button>
+                </div>
+            </div>
+
+            <!-- Month Radio List -->
+            <div class="filter-group">
+                <div class="filter-group-title">Month</div>
+                <ul id="month-list" class="sidebar-month-list">
+                    <li data-month="all" class="sidebar-month-item">
+                        <span class="radio-circle-indicator"></span> All Months
                     </li>
-                    <li data-month="all" class="special-option">
-                        <i class="fa-regular fa-calendar-days me-2"></i> Entire Year
-                    </li>
-                    <li data-month="0">January</li>
-                    <li data-month="1">February</li>
-                    <li data-month="2">March</li>
-                    <li data-month="3">April</li>
-                    <li data-month="4">May</li>
-                    <li data-month="5">June</li>
-                    <li data-month="6">July</li>
-                    <li data-month="7">August</li>
-                    <li data-month="8">September</li>
-                    <li data-month="9">October</li>
-                    <li data-month="10">November</li>
-                    <li data-month="11">December</li>
+                    <li data-month="0" class="sidebar-month-item"><span class="radio-circle-indicator"></span> January</li>
+                    <li data-month="1" class="sidebar-month-item"><span class="radio-circle-indicator"></span> February</li>
+                    <li data-month="2" class="sidebar-month-item"><span class="radio-circle-indicator"></span> March</li>
+                    <li data-month="3" class="sidebar-month-item"><span class="radio-circle-indicator"></span> April</li>
+                    <li data-month="4" class="sidebar-month-item"><span class="radio-circle-indicator"></span> May</li>
+                    <li data-month="5" class="sidebar-month-item"><span class="radio-circle-indicator"></span> June</li>
+                    <li data-month="6" class="sidebar-month-item"><span class="radio-circle-indicator"></span> July</li>
+                    <li data-month="7" class="sidebar-month-item"><span class="radio-circle-indicator"></span> August</li>
+                    <li data-month="8" class="sidebar-month-item"><span class="radio-circle-indicator"></span> September</li>
+                    <li data-month="9" class="sidebar-month-item"><span class="radio-circle-indicator"></span> October</li>
+                    <li data-month="10" class="sidebar-month-item"><span class="radio-circle-indicator"></span> November</li>
+                    <li data-month="11" class="sidebar-month-item"><span class="radio-circle-indicator"></span> December</li>
                 </ul>
             </div>
 
-            <button id="open-bin-btn" class="bin-btn">
-                <i class="fa-solid fa-trash-arrow-up" style="color: var(--expense-coral);"></i> Deleted Logs
+            <!-- Transaction Type -->
+            <div class="filter-group">
+                <div class="filter-group-title">Transaction Type</div>
+                <div class="sidebar-period-pills" style="grid-template-columns: repeat(3, 1fr);">
+                    <button type="button" class="sidebar-pill-btn active" id="side-type-all">All</button>
+                    <button type="button" class="sidebar-pill-btn" id="side-type-inc">Income</button>
+                    <button type="button" class="sidebar-pill-btn" id="side-type-exp">Expense</button>
+                </div>
+            </div>
+
+            <!-- Category -->
+            <div class="filter-group">
+                <div class="filter-group-title">Category</div>
+                <select id="sidebar-category-select" class="select-clean" style="padding: 6px 12px; font-size: 0.8rem;">
+                    <option value="">All Categories</option>
+                    <option value="Food">Food & Dining</option>
+                    <option value="Transport">Transportation</option>
+                    <option value="Shopping">Shopping</option>
+                    <option value="Bills">Bills & Utilities</option>
+                    <option value="Entertainment">Entertainment</option>
+                    <option value="Health">Health & Fitness</option>
+                    <option value="Investment">Investment</option>
+                    <option value="Salary">Salary/Income</option>
+                    <option value="General">General</option>
+                </select>
+            </div>
+
+            <button id="open-bin-btn" class="sidebar-bin-btn">
+                <i class="fa-solid fa-trash-can"></i> View Deleted Transactions
             </button>
+
+            <div class="sidebar-slogan-box">
+                Better Money<br>Brighter Tomorrow
+            </div>
         </div>
     </aside>
 
@@ -414,19 +564,60 @@
     <div class="modal-overlay" id="bin-modal">
         <div class="modal-container">
             <div class="modal-header">
-                <h2><i class="fa-solid fa-trash-arrow-up me-2" style="color: var(--primary-purple);"></i> Deleted Logs (Recycle Bin)</h2>
+                <h2><i class="fa-solid fa-trash-arrow-up" style="color: var(--primary-purple);"></i> Deleted Transactions</h2>
                 <button class="close-modal-btn" id="close-bin-btn" aria-label="Close Recycle Bin">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
             <div class="modal-body">
-                <ul id="bin-list" class="history-list">
+                <div id="bin-list">
                     <!-- Deleted items dynamically listed here -->
-                </ul>
+                </div>
                 <div id="bin-empty-msg" class="empty-state-card" style="display: none;">
                     <div class="empty-icon-wrap"><i class="fa-solid fa-trash-can"></i></div>
-                    <div class="empty-state-title">Recycle bin is empty</div>
-                    <div class="empty-state-desc">Deleted transactions will appear here and can be restored anytime.</div>
+                    <div class="empty-state-title">No deleted transactions</div>
+                    <div class="empty-state-desc">Transactions you delete will be safely kept here and can be restored.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MANAGE ACCOUNT MODAL ================= -->
+    <div class="modal-overlay" id="account-modal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2><i class="fa-regular fa-user" style="color: var(--primary-purple);"></i> Manage Account</h2>
+                <button class="close-modal-btn" id="close-account-btn" aria-label="Close Account Modal">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- User Profile Overview -->
+                <div class="account-profile-box">
+                    <div class="account-avatar-large" id="modal-avatar-initial">H</div>
+                    <div class="account-info-text">
+                        <h3 id="modal-username">Himanshu</h3>
+                        <p id="modal-email">user@example.com</p>
+                    </div>
+                </div>
+
+                <div class="account-section-title">Account Information</div>
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 14px; margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.8rem;">
+                        <span style="color: var(--text-muted);">Account Status</span>
+                        <span style="color: var(--savings-green); font-weight: 600;"><i class="fa-solid fa-circle" style="font-size: 6px;"></i> Active Member</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
+                        <span style="color: var(--text-muted);">Database</span>
+                        <span style="color: var(--text-main); font-weight: 500;">MongoDB Cloud Atlas</span>
+                    </div>
+                </div>
+
+                <div class="account-section-title">Quick Actions</div>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <button type="button" class="btn-primary-purple" onclick="logout()" style="background: rgba(255, 92, 114, 0.15); color: var(--expense-coral); border: 1px solid rgba(255, 92, 114, 0.3); box-shadow: none;">
+                        <i class="fa-solid fa-arrow-right-from-bracket"></i> Sign Out of Account
+                    </button>
                 </div>
             </div>
         </div>
