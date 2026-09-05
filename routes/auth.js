@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { protect } = require('../middleware/authMiddleware');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'wallet_fallback_secret_key';
+const JWT_SECRET = process.env.JWT_SECRET || 'wallet_app_jwt_secret_key_super_secure_2026';
 
 const generateToken = (id) => {
     return jwt.sign({ id }, JWT_SECRET, {

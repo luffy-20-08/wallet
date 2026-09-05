@@ -17,7 +17,7 @@ app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // DB Config
-const db = process.env.MONGO_URI || 'mongodb://localhost:27017/luffy';
+const db = process.env.MONGO_URI || 'mongodb+srv://luffywallet:luffyandhimanshu@wallet.nuv4bmz.mongodb.net/wallet?appName=wallet';
 
 // Connect to Mongo (cached for serverless)
 const connectDB = async () => {
@@ -34,7 +34,7 @@ app.use(async (req, res, next) => {
         console.error('MongoDB connection error:', err);
         res.status(500).json({
             success: false,
-            error: 'Database connection failed. Please check MONGO_URI.'
+            error: 'Database connection failed: ' + (err.message || 'Check Atlas IP whitelist')
         });
     }
 });

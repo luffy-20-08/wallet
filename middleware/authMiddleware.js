@@ -12,7 +12,7 @@ const protect = async (req, res, next) => {
             // Get token from header
             token = req.headers.authorization.split(' ')[1];
 
-            const JWT_SECRET = process.env.JWT_SECRET || 'wallet_fallback_secret_key';
+            const JWT_SECRET = process.env.JWT_SECRET || 'wallet_app_jwt_secret_key_super_secure_2026';
             const decoded = jwt.verify(token, JWT_SECRET);
 
             // Get user from the token
