@@ -4,16 +4,10 @@
     "MONGO_URI": "mongodb+srv://luffywallet:luffyandhimanshu@wallet.nuv4bmz.mongodb.net/wallet?appName=wallet",
     "JWT_SECRET": "wallet_app_jwt_secret_key_super_secure_2026"
   },
-  "builds": [
+  "rewrites": [
     {
-      "src": "server.js",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "server.js"
+      "source": "/(.*)",
+      "destination": "/api/index.js"
     }
   ]
 }

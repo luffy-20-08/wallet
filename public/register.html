@@ -4,70 +4,183 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register — Wallet</title>
+    <title>Create Account — Wallet</title>
     <!-- Modern Font: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=2">
 </head>
 
 <body class="auth-page-body">
-    <div class="auth-card-modern">
+    <!-- Ambient Background Decorations -->
+    <div class="auth-bg-decorations" aria-hidden="true">
+        <div class="auth-ambient-glow-purple"></div>
+        <div class="auth-ambient-glow-teal"></div>
+        <svg class="auth-chart-backdrop" viewBox="0 0 900 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0 190C120 190 180 130 300 145C420 160 480 80 600 95C720 110 780 40 900 25" stroke="#A970FF" stroke-width="2" stroke-dasharray="6 6"/>
+            <path d="M0 215C140 215 200 170 340 175C480 180 540 120 680 135C820 150 850 90 900 80" stroke="#00D9C0" stroke-width="2"/>
+        </svg>
+    </div>
+
+    <!-- Centered Modern Auth Card -->
+    <main class="auth-card-modern">
+        <!-- Brand Header -->
         <div class="auth-card-header">
-            <div class="auth-brand-icon">
-                <i class="fa-solid fa-wallet"></i>
+            <div class="auth-brand-badge">
+                <div class="brand-icon">
+                    <i class="fa-solid fa-wallet"></i>
+                </div>
+                <span class="brand-name">Wallet</span>
             </div>
-            <h2 class="auth-title">Create Account</h2>
+            <h1 class="auth-title">Create Account</h1>
             <p class="auth-subtitle">Start tracking your personal finances today</p>
         </div>
 
-        <div id="alert-box" class="alert-clean-danger" style="display: none;">
+        <!-- Alert Notification Box -->
+        <div id="alert-box" class="alert-clean-danger" style="display: none;" role="alert">
             <i class="fa-solid fa-circle-exclamation"></i>
             <span id="alert-text"></span>
         </div>
 
-        <form id="register-form">
+        <!-- Registration Form -->
+        <form id="register-form" novalidate>
             <div class="form-group-clean">
-                <label for="username" class="form-label-clean">Username</label>
-                <input type="text" id="username" class="input-clean" placeholder="e.g. himanshu" required>
+                <label for="username" class="form-label-clean">
+                    <i class="fa-regular fa-user" style="color: var(--primary-purple); font-size: 0.76rem;"></i> Username
+                </label>
+                <div class="input-icon-wrap">
+                    <i class="fa-regular fa-user input-lead-icon"></i>
+                    <input 
+                        type="text" 
+                        id="username" 
+                        class="input-clean" 
+                        placeholder="e.g. himanshu" 
+                        autocomplete="username"
+                        required
+                    >
+                </div>
             </div>
+
             <div class="form-group-clean">
-                <label for="email" class="form-label-clean">Email Address</label>
-                <input type="email" id="email" class="input-clean" placeholder="name@example.com" required>
+                <label for="email" class="form-label-clean">
+                    <i class="fa-regular fa-envelope" style="color: var(--primary-purple); font-size: 0.76rem;"></i> Email Address
+                </label>
+                <div class="input-icon-wrap">
+                    <i class="fa-regular fa-envelope input-lead-icon"></i>
+                    <input 
+                        type="email" 
+                        id="email" 
+                        class="input-clean" 
+                        placeholder="name@example.com" 
+                        autocomplete="email"
+                        required
+                    >
+                </div>
             </div>
-            <div class="form-group-clean" style="margin-bottom: 20px;">
-                <label for="password" class="form-label-clean">Password</label>
-                <input type="password" id="password" class="input-clean" placeholder="At least 6 characters" required minlength="6">
+
+            <div class="form-group-clean" style="margin-bottom: 22px;">
+                <label for="password" class="form-label-clean">
+                    <i class="fa-solid fa-lock" style="color: var(--primary-purple); font-size: 0.74rem;"></i> Password
+                </label>
+                <div class="input-icon-wrap has-toggle">
+                    <i class="fa-solid fa-key input-lead-icon"></i>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        class="input-clean" 
+                        placeholder="At least 6 characters" 
+                        autocomplete="new-password"
+                        minlength="6"
+                        required
+                    >
+                    <button 
+                        type="button" 
+                        id="toggle-password-btn" 
+                        class="password-toggle-btn" 
+                        aria-label="Toggle password visibility"
+                        title="Show or hide password"
+                    >
+                        <i class="fa-regular fa-eye" id="toggle-password-icon"></i>
+                    </button>
+                </div>
             </div>
+
             <button type="submit" class="btn-primary-purple" id="register-btn">
-                <i class="fa-solid fa-user-plus"></i> Create Account
+                <span id="btn-content">
+                    <i class="fa-solid fa-user-plus"></i> Create Account
+                </span>
             </button>
         </form>
 
+        <!-- Switch Link -->
         <p class="auth-footer-text">
             Already have an account? <a href="login.html">Sign In</a>
         </p>
-    </div>
+    </main>
+
+    <!-- Bottom Page Tagline & Security Note -->
+    <footer class="auth-page-footer">
+        <div class="auth-footer-tagline">Better Money. Brighter Tomorrow.</div>
+        <div class="auth-footer-subline">
+            <i class="fa-solid fa-shield-halved"></i> Bank-grade encryption & security
+        </div>
+    </footer>
 
     <script src="js/auth.js"></script>
     <script>
         const form = document.getElementById('register-form');
+        const registerBtn = document.getElementById('register-btn');
+        const btnContent = document.getElementById('btn-content');
         const alertBox = document.getElementById('alert-box');
         const alertText = document.getElementById('alert-text');
+        const passwordInput = document.getElementById('password');
+        const togglePasswordBtn = document.getElementById('toggle-password-btn');
+        const togglePasswordIcon = document.getElementById('toggle-password-icon');
 
+        // Password visibility toggle
+        togglePasswordBtn.addEventListener('click', () => {
+            const isPassword = passwordInput.type === 'password';
+            passwordInput.type = isPassword ? 'text' : 'password';
+            togglePasswordIcon.className = isPassword ? 'fa-regular fa-eye-slash' : 'fa-regular fa-eye';
+            passwordInput.focus();
+        });
+
+        // Form submission handling
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
+            
             const username = document.getElementById('username').value.trim();
             const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value;
+            const password = passwordInput.value;
+
+            if (!username || !email || !password) {
+                alertText.textContent = 'Please fill in all fields';
+                alertBox.style.display = 'flex';
+                return;
+            }
+
+            if (password.length < 6) {
+                alertText.textContent = 'Password must be at least 6 characters long';
+                alertBox.style.display = 'flex';
+                return;
+            }
+
+            // Set loading state & disable button to prevent duplicates
+            registerBtn.disabled = true;
+            btnContent.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Creating Account...';
+            alertBox.style.display = 'none';
 
             try {
                 await registerUser(username, email, password);
+                // On success, registerUser will save token & redirect to index.html
             } catch (err) {
                 alertText.textContent = err.message || 'Registration failed';
                 alertBox.style.display = 'flex';
+                // Reset button state
+                registerBtn.disabled = false;
+                btnContent.innerHTML = '<i class="fa-solid fa-user-plus"></i> Create Account';
             }
         });
     </script>
