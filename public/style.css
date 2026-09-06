@@ -1601,6 +1601,7 @@ body {
     font-size: 1.25rem;
     background: linear-gradient(135deg, #A970FF, #00D9C0);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
     opacity: 0.85;
 }
