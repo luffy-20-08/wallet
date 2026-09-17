@@ -362,6 +362,102 @@ body {
 }
 
 /* ===================================================
+   MOBILE HEADER & PROFILE AVATAR OPTIMIZATIONS
+   =================================================== */
+@media (max-width: 768px) {
+    .app-header {
+        padding: 10px 14px;
+        margin-bottom: 16px;
+        gap: 12px;
+    }
+
+    .brand-section {
+        gap: 10px;
+    }
+
+    .brand-icon {
+        width: 34px;
+        height: 34px;
+        font-size: 1.05rem;
+    }
+
+    .brand-text h1 {
+        font-size: 1.15rem;
+    }
+
+    /* Hide tagline on mobile to eliminate cramped/suffocating feeling */
+    .brand-text p {
+        display: none !important;
+    }
+
+    .header-right {
+        gap: 10px;
+    }
+
+    .notification-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 0.88rem;
+    }
+
+    /* Profile Badge: Transform into pure sleek circular avatar */
+    .user-profile-badge {
+        padding: 0;
+        background: transparent;
+        border: none;
+        box-shadow: none;
+        gap: 0;
+        border-radius: 50%;
+    }
+
+    .user-profile-badge:hover {
+        background: transparent;
+        border-color: transparent;
+    }
+
+    /* Hide "Welcome, User" name, "Manage your account" subtext, and chevron arrow on mobile */
+    .user-text-col,
+    .user-chevron {
+        display: none !important;
+    }
+
+    /* Circular initial avatar: prominent, stylish glowing border */
+    .user-avatar {
+        width: 36px;
+        height: 36px;
+        font-size: 0.95rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #3B2A63, #241743);
+        border: 1.5px solid rgba(169, 112, 255, 0.55);
+        color: var(--primary-purple);
+        box-shadow: 0 0 10px rgba(169, 112, 255, 0.25);
+        transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
+    }
+
+    .user-profile-badge:hover .user-avatar,
+    .user-profile-badge:active .user-avatar {
+        transform: scale(1.06);
+        border-color: var(--primary-purple);
+        box-shadow: 0 0 16px rgba(169, 112, 255, 0.5);
+    }
+
+    /* Keep dropdown within screen bounds on mobile */
+    .profile-dropdown-menu {
+        right: 0;
+        top: calc(100% + 8px);
+        min-width: 230px;
+        max-width: calc(100vw - 24px);
+    }
+
+    .notification-dropdown-menu {
+        right: -42px;
+        top: calc(100% + 8px);
+        width: 300px;
+        max-width: calc(100vw - 24px);
+    }
+}
+
+/* ===================================================
    GENERIC CARD SYSTEM
    =================================================== */
 .fintech-card {
