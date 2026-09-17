@@ -10,6 +10,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const transactions = require('./routes/transactions');
 const auth = require('./routes/auth');
+const subscriptions = require('./routes/subscriptions');
 
 const path = require('path');
 
@@ -59,6 +60,7 @@ app.use(async (req, res, next) => {
 // Use Routes
 app.use('/api/transactions', transactions);
 app.use('/api/auth', auth);
+app.use('/api/subscriptions', subscriptions);
 
 const port = process.env.PORT || 8000;
 

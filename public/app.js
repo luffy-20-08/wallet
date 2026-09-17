@@ -1742,10 +1742,42 @@ filterPillAll.addEventListener('click', () => setHistoryTypeFilter('all'));
 filterPillIncome.addEventListener('click', () => setHistoryTypeFilter('income'));
 filterPillExpense.addEventListener('click', () => setHistoryTypeFilter('expense'));
 
-// Click Summary Cards to Filter History
-document.getElementById('card-filter-balance').addEventListener('click', () => setHistoryTypeFilter('all'));
-document.getElementById('card-filter-income').addEventListener('click', () => setHistoryTypeFilter('income'));
-document.getElementById('card-filter-expense').addEventListener('click', () => setHistoryTypeFilter('expense'));
+// Click Summary Cards to Filter & Open Tabs (All, Income, Expense, Savings)
+function openHistoryTab(type) {
+    setHistoryTypeFilter(type);
+    const historySec = document.getElementById('history-section');
+    if (historySec) {
+        historySec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const cardWrap = historySec.querySelector('.history-card-wrap') || historySec;
+        if (cardWrap) {
+            cardWrap.classList.remove('card-highlight-pulse');
+            void cardWrap.offsetWidth;
+            cardWrap.classList.add('card-highlight-pulse');
+            setTimeout(() => cardWrap.classList.remove('card-highlight-pulse'), 2000);
+        }
+    }
+}
+
+function openSavingsTab() {
+    const budgetSec = document.getElementById('budget-widget-card');
+    if (budgetSec) {
+        budgetSec.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        budgetSec.classList.remove('card-highlight-pulse');
+        void budgetSec.offsetWidth;
+        budgetSec.classList.add('card-highlight-pulse');
+        setTimeout(() => budgetSec.classList.remove('card-highlight-pulse'), 2000);
+    }
+}
+
+const cardBalance = document.getElementById('card-filter-balance');
+const cardIncome = document.getElementById('card-filter-income');
+const cardExpense = document.getElementById('card-filter-expense');
+const cardSavings = document.getElementById('card-filter-savings');
+
+if (cardBalance) cardBalance.addEventListener('click', () => openHistoryTab('all'));
+if (cardIncome) cardIncome.addEventListener('click', () => openHistoryTab('income'));
+if (cardExpense) cardExpense.addEventListener('click', () => openHistoryTab('expense'));
+if (cardSavings) cardSavings.addEventListener('click', openSavingsTab);
 
 // Helper to escape HTML and prevent injection
 function escapeHTML(str) {
@@ -1774,6 +1806,931 @@ function initChartTimeSelectors() {
     });
 }
 
+// ===================================================
+// SUBSCRIPTIONS & RECURRING DEDUCTIONS ENGINE
+// ===================================================
+const SUBS_API_URL = '/api/subscriptions';
+
+// DOM Elements: Subscriptions Summary Card & Triggers
+const cardOpenSubscriptions = document.getElementById('card-open-subscriptions');
+const subActiveBadge = document.getElementById('sub-active-badge');
+const subMonthlyTotal = document.getElementById('sub-monthly-total');
+const subNextRenewalText = document.getElementById('sub-next-renewal-text');
+const openSubscriptionsBtn = document.getElementById('open-subscriptions-btn');
+const openSubsSidebarBtn = document.getElementById('open-subs-sidebar-btn');
+
+// DOM Elements: Subscriptions Modal
+const subscriptionsModal = document.getElementById('subscriptions-modal');
+const closeSubscriptionsBtn = document.getElementById('close-subscriptions-btn');
+const tabBtnSubActive = document.getElementById('tab-btn-sub-active');
+const tabBtnSubAdd = document.getElementById('tab-btn-sub-add');
+const subTabActiveView = document.getElementById('sub-tab-active-view');
+const subTabAddView = document.getElementById('sub-tab-add-view');
+const modalSubCount = document.getElementById('modal-sub-count');
+const subModalMonthlyTotal = document.getElementById('sub-modal-monthly-total');
+const subModalNextRenewal = document.getElementById('sub-modal-next-renewal');
+const subscriptionsList = document.getElementById('subscriptions-list');
+const subsEmptyState = document.getElementById('subs-empty-state');
+const emptyStateAddSubBtn = document.getElementById('empty-state-add-sub-btn');
+const subModalAlert = document.getElementById('sub-modal-alert');
+const subModalAlertText = document.getElementById('sub-modal-alert-text');
+
+// DOM Elements: Add Subscription Form
+const addSubscriptionForm = document.getElementById('add-subscription-form');
+const appsPresetGrid = document.getElementById('apps-preset-grid');
+const subNameInput = document.getElementById('sub-name-input');
+const subPlanInput = document.getElementById('sub-plan-input');
+const subAmountInput = document.getElementById('sub-amount-input');
+const subCategorySelect = document.getElementById('sub-category-select');
+const durationPillsRow = document.getElementById('duration-pills-row');
+const customMonthsWrap = document.getElementById('custom-months-wrap');
+const subCustomMonthsInput = document.getElementById('sub-custom-months-input');
+const subBillingDaySelect = document.getElementById('sub-billing-day');
+const subAutoDeductCheckbox = document.getElementById('sub-auto-deduct-checkbox');
+const subDeductNowCheckbox = document.getElementById('sub-deduct-now-checkbox');
+const btnSubmitSubscription = document.getElementById('btn-submit-subscription');
+const subSubmitBtnContent = document.getElementById('sub-submit-btn-content');
+
+// Subscriptions State
+let subscriptionsData = [];
+let currentSelectedApp = {
+    appId: 'netflix',
+    name: 'Netflix',
+    icon: 'fa-solid fa-film',
+    color: '#E50914',
+    category: 'Entertainment',
+    plan: 'Standard'
+};
+let currentSelectedMonths = 6;
+
+// Populate billing day options (1 - 31)
+function initBillingDaySelect() {
+    if (!subBillingDaySelect) return;
+    subBillingDaySelect.innerHTML = '';
+    const today = new Date().getDate();
+    for (let day = 1; day <= 31; day++) {
+        const opt = document.createElement('option');
+        opt.value = day;
+        opt.innerText = `${day}${getOrdinalSuffix(day)}`;
+        if (day === today) opt.selected = true;
+        subBillingDaySelect.appendChild(opt);
+    }
+}
+
+function getOrdinalSuffix(n) {
+    const s = ['th', 'st', 'nd', 'rd'];
+    const v = n % 100;
+    return s[(v - 20) % 10] || s[v] || s[0];
+}
+
+// Show alert inside subscription modal
+function showSubAlert(msg, isError = false) {
+    if (!subModalAlert || !subModalAlertText) return;
+    subModalAlertText.innerText = msg;
+    subModalAlert.className = isError ? 'alert-clean-error' : 'alert-clean-success';
+    subModalAlert.style.display = 'flex';
+    setTimeout(() => {
+        if (subModalAlert) subModalAlert.style.display = 'none';
+    }, 4500);
+}
+
+// Switch between modal tabs
+function switchSubTab(tabName) {
+    if (!tabBtnSubActive || !tabBtnSubAdd) return;
+    if (tabName === 'active') {
+        tabBtnSubActive.classList.add('active');
+        tabBtnSubAdd.classList.remove('active');
+        if (subTabActiveView) subTabActiveView.classList.add('active');
+        if (subTabAddView) subTabAddView.classList.remove('active');
+    } else {
+        tabBtnSubActive.classList.remove('active');
+        tabBtnSubAdd.classList.add('active');
+        if (subTabActiveView) subTabActiveView.classList.remove('active');
+        if (subTabAddView) subTabAddView.classList.add('active');
+    }
+}
+
+// Open / Close Subscriptions Modal
+function openSubscriptionsModal() {
+    if (subscriptionsModal) subscriptionsModal.classList.add('active');
+    loadSubscriptions(true);
+}
+
+function closeSubscriptionsModal() {
+    if (subscriptionsModal) subscriptionsModal.classList.remove('active');
+}
+
+// App Preset Selection
+function initAppPresetChips() {
+    if (!appsPresetGrid) return;
+    const chips = appsPresetGrid.querySelectorAll('.app-preset-chip');
+    chips.forEach(chip => {
+        chip.addEventListener('click', () => {
+            chips.forEach(c => c.classList.remove('selected'));
+            chip.classList.add('selected');
+
+            const appId = chip.dataset.app;
+            const appName = chip.dataset.name || '';
+            const appIcon = chip.dataset.icon || 'fa-solid fa-credit-card';
+            const appColor = chip.dataset.color || '#A970FF';
+            const appCat = chip.dataset.cat || 'Entertainment';
+            const appPlan = chip.dataset.plan || 'Standard';
+
+            currentSelectedApp = {
+                appId,
+                name: appName,
+                icon: appIcon,
+                color: appColor,
+                category: appCat,
+                plan: appPlan
+            };
+
+            if (subNameInput) subNameInput.value = appName;
+            if (subPlanInput) subPlanInput.value = appPlan;
+            if (subCategorySelect) subCategorySelect.value = appCat;
+            if (appId === 'custom' && subNameInput) {
+                subNameInput.focus();
+            }
+        });
+    });
+}
+
+// Duration Selection Pills & Custom Date/Month/Year Engine
+const subCustomDaySelect = document.getElementById('sub-custom-day-select');
+const subCustomMonthSelect = document.getElementById('sub-custom-month-select');
+const subCustomYearSelect = document.getElementById('sub-custom-year-select');
+const customCalculatedMonthsBadge = document.getElementById('custom-calculated-months-badge');
+const customDatePreview = document.getElementById('custom-date-preview');
+
+function initCustomDateSelectors() {
+    const today = new Date();
+    const currentYear = today.getFullYear();
+
+    // Populate Days (1-31)
+    if (subCustomDaySelect && subCustomDaySelect.options.length === 0) {
+        subCustomDaySelect.innerHTML = '';
+        for (let d = 1; d <= 31; d++) {
+            const opt = document.createElement('option');
+            opt.value = d;
+            opt.innerText = `${d}${getOrdinalSuffix(d)}`;
+            subCustomDaySelect.appendChild(opt);
+        }
+    }
+
+    // Populate Years (Current Year to Current Year + 10)
+    if (subCustomYearSelect && subCustomYearSelect.options.length === 0) {
+        subCustomYearSelect.innerHTML = '';
+        for (let y = currentYear; y <= currentYear + 10; y++) {
+            const opt = document.createElement('option');
+            opt.value = y;
+            opt.innerText = y;
+            subCustomYearSelect.appendChild(opt);
+        }
+    }
+
+    syncCustomDateFromMonths(currentSelectedMonths || 6);
+}
+
+// Sync Date/Month/Year dropdowns when a specific month count is given
+function syncCustomDateFromMonths(monthsCount) {
+    const today = new Date();
+    const target = new Date(today);
+    target.setMonth(target.getMonth() + parseInt(monthsCount || 1));
+
+    const day = target.getDate();
+    const month = target.getMonth();
+    const year = target.getFullYear();
+
+    if (subCustomDaySelect) subCustomDaySelect.value = day;
+    if (subCustomMonthSelect) subCustomMonthSelect.value = month;
+    if (subCustomYearSelect) subCustomYearSelect.value = year;
+
+    updateCustomDateDisplay(day, month, year, monthsCount);
+}
+
+// Calculate months and update display when user changes Date, Month, or Year
+function updateFromCustomDateSelectors() {
+    if (!subCustomDaySelect || !subCustomMonthSelect || !subCustomYearSelect) return;
+
+    let day = parseInt(subCustomDaySelect.value) || 1;
+    const month = parseInt(subCustomMonthSelect.value) || 0;
+    const year = parseInt(subCustomYearSelect.value) || new Date().getFullYear();
+
+    // Clamp days according to max days in selected month/year (e.g. Feb 28/29)
+    const maxDays = new Date(year, month + 1, 0).getDate();
+    if (day > maxDays) {
+        day = maxDays;
+        subCustomDaySelect.value = day;
+    }
+
+    const today = new Date();
+    let monthsDiff = (year - today.getFullYear()) * 12 + (month - today.getMonth());
+    if (day >= today.getDate()) {
+        // Includes full current billing cycle
+    }
+    if (monthsDiff < 1) monthsDiff = 1;
+
+    currentSelectedMonths = monthsDiff;
+    if (subCustomMonthsInput) subCustomMonthsInput.value = monthsDiff;
+
+    // Sync renewal day with chosen custom date
+    if (subBillingDaySelect) {
+        subBillingDaySelect.value = day;
+    }
+
+    updateCustomDateDisplay(day, month, year, monthsDiff);
+}
+
+function updateCustomDateDisplay(day, month, year, months) {
+    const formatted = `${String(day).padStart(2, '0')}/${String(month + 1).padStart(2, '0')}/${year}`;
+    if (customDatePreview) {
+        customDatePreview.innerText = formatted;
+    }
+    if (customCalculatedMonthsBadge) {
+        customCalculatedMonthsBadge.innerText = `${months} Month${months > 1 ? 's' : ''}`;
+    }
+}
+
+function initDurationPills() {
+    initCustomDateSelectors();
+
+    if (subCustomDaySelect) subCustomDaySelect.addEventListener('change', updateFromCustomDateSelectors);
+    if (subCustomMonthSelect) subCustomMonthSelect.addEventListener('change', updateFromCustomDateSelectors);
+    if (subCustomYearSelect) subCustomYearSelect.addEventListener('change', updateFromCustomDateSelectors);
+
+    if (subCustomMonthsInput) {
+        subCustomMonthsInput.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            if (val && val > 0) {
+                currentSelectedMonths = val;
+                syncCustomDateFromMonths(val);
+            }
+        });
+    }
+
+    if (!durationPillsRow) return;
+    const pills = durationPillsRow.querySelectorAll('.duration-pill');
+    pills.forEach(pill => {
+        pill.addEventListener('click', () => {
+            pills.forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+
+            const months = pill.dataset.months;
+            if (months === 'custom') {
+                if (customMonthsWrap) customMonthsWrap.style.display = 'block';
+                initCustomDateSelectors();
+                updateFromCustomDateSelectors();
+            } else {
+                if (customMonthsWrap) customMonthsWrap.style.display = 'none';
+                currentSelectedMonths = parseInt(months) || 1;
+            }
+        });
+    });
+}
+
+// ===================================================
+// NOTIFICATIONS & TOAST ALERTS ENGINE
+// ===================================================
+const headerNotificationBtn = document.getElementById('header-notification-btn');
+const headerNotifBadge = document.getElementById('header-notif-badge');
+const notificationDropdown = document.getElementById('notification-dropdown');
+const notifList = document.getElementById('notif-list');
+const notifEmpty = document.getElementById('notif-empty');
+const notifClearAllBtn = document.getElementById('notif-clear-all');
+const toastContainer = document.getElementById('toast-container');
+
+function getNotificationStorageKey() {
+    try {
+        const user = JSON.parse(localStorage.getItem('user'));
+        return 'wallet_notifications_' + (user ? user.id || user._id || user.email : 'default');
+    } catch (e) {
+        return 'wallet_notifications_default';
+    }
+}
+
+function getStoredNotifications() {
+    try {
+        const raw = localStorage.getItem(getNotificationStorageKey());
+        return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function saveStoredNotifications(notifs) {
+    try {
+        localStorage.setItem(getNotificationStorageKey(), JSON.stringify(notifs));
+    } catch (e) {}
+}
+
+function updateNotificationBadge() {
+    const notifs = getStoredNotifications();
+    const unreadCount = notifs.filter(n => !n.read).length;
+    if (headerNotifBadge) {
+        if (unreadCount > 0) {
+            headerNotifBadge.innerText = unreadCount > 9 ? '9+' : unreadCount;
+            headerNotifBadge.style.display = 'inline-block';
+        } else {
+            headerNotifBadge.style.display = 'none';
+        }
+    }
+}
+
+function renderNotificationsDropdown() {
+    if (!notifList) return;
+    const notifs = getStoredNotifications();
+
+    if (notifs.length === 0) {
+        notifList.innerHTML = '';
+        if (notifEmpty) notifEmpty.style.display = 'flex';
+        return;
+    }
+
+    if (notifEmpty) notifEmpty.style.display = 'none';
+    notifList.innerHTML = '';
+
+    notifs.slice(0, 20).forEach(notif => {
+        const item = document.createElement('div');
+        item.className = `notif-item ${notif.read ? 'read' : 'unread'}`;
+
+        const timeStr = notif.timestamp ? new Date(notif.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now';
+
+        item.innerHTML = `
+            <div class="notif-item-icon" style="background: ${notif.color || '#A970FF'}22; color: ${notif.color || '#A970FF'}; border: 1px solid ${notif.color || '#A970FF'}44;">
+                <i class="${escapeHTML(notif.icon || 'fa-solid fa-credit-card')}"></i>
+            </div>
+            <div class="notif-item-body">
+                <div class="notif-item-title">
+                    <span>${escapeHTML(notif.title || 'Subscription Payment')}</span>
+                    <span class="notif-item-amount">-₹${Math.abs(notif.amount || 0)}</span>
+                </div>
+                <div class="notif-item-msg">${escapeHTML(notif.message)}</div>
+                <div class="notif-item-time"><i class="fa-regular fa-clock"></i> ${timeStr}</div>
+            </div>
+        `;
+        notifList.appendChild(item);
+    });
+}
+
+function addNotification(notif) {
+    if (!notif) return;
+    const notifs = getStoredNotifications();
+    // Avoid exact duplicates
+    if (notif.id && notifs.some(n => n.id === notif.id)) return;
+
+    notifs.unshift({
+        id: notif.id || 'notif_' + Date.now(),
+        type: notif.type || 'deduction',
+        title: notif.title || 'Subscription Payment Deducted',
+        subName: notif.subName || '',
+        amount: notif.amount || 0,
+        message: notif.message || '',
+        icon: notif.icon || 'fa-solid fa-credit-card',
+        color: notif.color || '#A970FF',
+        timestamp: notif.timestamp || new Date().toISOString(),
+        read: false
+    });
+
+    saveStoredNotifications(notifs.slice(0, 50));
+    updateNotificationBadge();
+    renderNotificationsDropdown();
+}
+
+function clearAllNotifications() {
+    saveStoredNotifications([]);
+    updateNotificationBadge();
+    renderNotificationsDropdown();
+}
+
+// Show Floating Toast Notification + Native Desktop Push Notification
+function showToastNotification(notif) {
+    if (!toastContainer || !notif) return;
+
+    const toast = document.createElement('div');
+    toast.className = 'toast-card';
+
+    toast.innerHTML = `
+        <div class="toast-icon" style="background: ${notif.color || '#A970FF'}25; color: ${notif.color || '#A970FF'}; border: 1px solid ${notif.color || '#A970FF'}44;">
+            <i class="${escapeHTML(notif.icon || 'fa-solid fa-credit-card')}"></i>
+        </div>
+        <div class="toast-content">
+            <div class="toast-header">
+                <span class="toast-title">${escapeHTML(notif.title || 'Subscription Deducted')}</span>
+                <span class="toast-amount">-₹${Math.abs(notif.amount || 0)}</span>
+            </div>
+            <div class="toast-body">${escapeHTML(notif.message)}</div>
+            <div class="toast-footer">
+                <span><i class="fa-solid fa-circle-check"></i> Balance updated automatically</span>
+                <button type="button" class="toast-close-btn" aria-label="Close notification"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+        </div>
+        <div class="toast-progress-bar"></div>
+    `;
+
+    toastContainer.appendChild(toast);
+
+    const closeBtn = toast.querySelector('.toast-close-btn');
+    let isRemoved = false;
+    const dismiss = () => {
+        if (isRemoved) return;
+        isRemoved = true;
+        toast.classList.add('leaving');
+        setTimeout(() => {
+            if (toast.parentNode) toast.parentNode.removeChild(toast);
+        }, 300);
+    };
+
+    if (closeBtn) closeBtn.addEventListener('click', dismiss);
+    setTimeout(dismiss, 6000);
+
+    // Trigger Browser Native Desktop Notification
+    if ('Notification' in window) {
+        const bodyText = notif.message || `₹${Math.abs(notif.amount || 0)} deducted for ${notif.subName}`;
+        if (Notification.permission === 'granted') {
+            try {
+                new Notification(notif.title || 'Wallet: Subscription Deducted', {
+                    body: bodyText,
+                    icon: '/favicon.ico'
+                });
+            } catch (e) {}
+        } else if (Notification.permission !== 'denied') {
+            Notification.requestPermission().then(permission => {
+                if (permission === 'granted') {
+                    try {
+                        new Notification(notif.title || 'Wallet: Subscription Deducted', {
+                            body: bodyText,
+                            icon: '/favicon.ico'
+                        });
+                    } catch (e) {}
+                }
+            });
+        }
+    }
+}
+
+function initNotificationsUI() {
+    const notifBtn = document.getElementById('header-notification-btn');
+    const notifDropdown = document.getElementById('notification-dropdown');
+    const notifClearBtn = document.getElementById('notif-clear-all');
+
+    if (notifBtn && notifDropdown) {
+        notifBtn.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (userDropdown) {
+                userDropdown.classList.remove('show');
+                userDropdown.classList.remove('active');
+            }
+            const isCurrentlyOpen = notifDropdown.classList.contains('show') || notifDropdown.classList.contains('active');
+            if (isCurrentlyOpen) {
+                notifDropdown.classList.remove('show');
+                notifDropdown.classList.remove('active');
+            } else {
+                notifDropdown.classList.add('show');
+                notifDropdown.classList.add('active');
+                // Mark notifications as read
+                const notifs = getStoredNotifications();
+                notifs.forEach(n => n.read = true);
+                saveStoredNotifications(notifs);
+                updateNotificationBadge();
+                renderNotificationsDropdown();
+            }
+        };
+    }
+
+    if (notifClearBtn) {
+        notifClearBtn.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            clearAllNotifications();
+        };
+    }
+
+    window.addEventListener('click', (e) => {
+        const btn = document.getElementById('header-notification-btn');
+        const dropdown = document.getElementById('notification-dropdown');
+        if (dropdown && btn && !btn.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.remove('show');
+            dropdown.classList.remove('active');
+        }
+    });
+
+    // Request notification permission once user interacts
+    if ('Notification' in window && Notification.permission === 'default') {
+        const btn = document.getElementById('header-notification-btn');
+        btn?.addEventListener('click', () => {
+            Notification.requestPermission();
+        }, { once: true });
+    }
+
+    updateNotificationBadge();
+    renderNotificationsDropdown();
+}
+
+// Ensure notification UI is active immediately on load
+initNotificationsUI();
+
+// Load Subscriptions from Server
+async function loadSubscriptions(skipTxRefresh = false) {
+    try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        const res = await fetch(SUBS_API_URL, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (res.status === 401) return;
+
+        const result = await res.json();
+        if (!result.success) {
+            console.error('Failed to load subscriptions:', result.error);
+            return;
+        }
+
+        subscriptionsData = result.data || [];
+        const activeCount = result.activeCount || 0;
+        const monthlyTotal = result.monthlyTotal || 0;
+        const nextRenewal = result.nextRenewal;
+
+        // Process any deduction notifications returned by backend
+        if (result.notifications && result.notifications.length > 0) {
+            result.notifications.forEach(notif => {
+                addNotification(notif);
+                showToastNotification(notif);
+            });
+        }
+
+        // Update Dashboard Summary Card
+        if (subActiveBadge) {
+            subActiveBadge.innerText = `${activeCount} Active`;
+        }
+        if (subMonthlyTotal) {
+            subMonthlyTotal.innerText = formatCurrency(monthlyTotal);
+        }
+        if (subNextRenewalText) {
+            if (nextRenewal) {
+                const renewDate = new Date(nextRenewal.nextBillingDate);
+                const isToday = renewDate.toDateString() === new Date().toDateString();
+                subNextRenewalText.innerHTML = `<i class="fa-regular fa-clock" style="color: var(--income-teal);"></i> Next: <strong>${escapeHTML(nextRenewal.name)}</strong> (${isToday ? 'Today' : formatDateMedium(renewDate)})`;
+            } else {
+                subNextRenewalText.innerHTML = `<i class="fa-solid fa-check" style="color: var(--income-teal);"></i> No upcoming renewals`;
+            }
+        }
+
+        // Update Modal Stats
+        if (modalSubCount) modalSubCount.innerText = activeCount;
+        if (subModalMonthlyTotal) subModalMonthlyTotal.innerText = `${formatCurrency(monthlyTotal)}/mo`;
+        if (subModalNextRenewal) {
+            if (nextRenewal) {
+                const renewDate = new Date(nextRenewal.nextBillingDate);
+                subModalNextRenewal.innerText = `${nextRenewal.name} · ${formatDateMedium(renewDate)}`;
+            } else {
+                subModalNextRenewal.innerText = 'None due';
+            }
+        }
+
+        // Render Cards in Modal
+        renderSubscriptionsList(subscriptionsData);
+
+        // If backend auto-deducted any due subscriptions, refresh transactions to reflect immediate balance change!
+        if (!skipTxRefresh && result.autoDeductedCount > 0) {
+            await getTransactions();
+        }
+    } catch (err) {
+        console.error('Error in loadSubscriptions:', err);
+    }
+}
+
+// Render Subscriptions List in Modal
+function renderSubscriptionsList(subs) {
+    if (!subscriptionsList) return;
+
+    if (!subs || subs.length === 0) {
+        subscriptionsList.innerHTML = '';
+        if (subsEmptyState) subsEmptyState.style.display = 'block';
+        return;
+    }
+
+    if (subsEmptyState) subsEmptyState.style.display = 'none';
+    subscriptionsList.innerHTML = '';
+
+    subs.forEach(sub => {
+        const card = document.createElement('div');
+        card.className = `sub-card-item ${sub.status}`;
+
+        const isCompleted = sub.status === 'completed';
+        const isPaused = sub.status === 'paused';
+        const isActive = sub.status === 'active';
+
+        // Duration progress
+        const duration = sub.durationMonths || 1;
+        const paid = sub.monthsPaid || 0;
+        const remaining = Math.max(0, duration - paid);
+        const percent = Math.min(100, Math.round((paid / duration) * 100));
+
+        // Renewal date formatting
+        let renewalDisplay = '';
+        if (isCompleted) {
+            renewalDisplay = '<span style="color: var(--savings-green);"><i class="fa-solid fa-circle-check"></i> All months completed</span>';
+        } else if (isPaused) {
+            renewalDisplay = '<span style="color: #EAB308;"><i class="fa-solid fa-circle-pause"></i> Auto-deduct paused</span>';
+        } else {
+            const nextDate = new Date(sub.nextBillingDate);
+            renewalDisplay = `Next: <strong>${formatDateMedium(nextDate)}</strong> (Day ${sub.billingDay})`;
+        }
+
+        // Status badge
+        const statusBadge = `<span class="sub-status-tag ${sub.status}">
+            <i class="fa-solid ${isActive ? 'fa-circle-play' : isCompleted ? 'fa-circle-check' : isPaused ? 'fa-circle-pause' : 'fa-ban'}"></i>
+            ${sub.status.charAt(0).toUpperCase() + sub.status.slice(1)}
+        </span>`;
+
+        card.innerHTML = `
+            <div class="sub-card-header">
+                <div class="sub-card-app">
+                    <div class="sub-card-icon" style="background: ${sub.color || '#A970FF'}22; color: ${sub.color || '#A970FF'}; border: 1px solid ${sub.color || '#A970FF'}44;">
+                        <i class="${escapeHTML(sub.icon || 'fa-solid fa-credit-card')}"></i>
+                    </div>
+                    <div class="sub-card-info">
+                        <h4>
+                            ${escapeHTML(sub.name)}
+                            <span class="sub-card-plan-badge">${escapeHTML(sub.plan || 'Plan')}</span>
+                            ${statusBadge}
+                        </h4>
+                        <div class="sub-card-category"><i class="fa-solid fa-tag"></i> ${escapeHTML(sub.category || 'Entertainment')}</div>
+                    </div>
+                </div>
+                <div class="sub-card-pricing">
+                    <div class="sub-card-amount">${formatCurrency(sub.amount)}</div>
+                    <div class="sub-card-cycle">/month</div>
+                </div>
+            </div>
+
+            <!-- Duration & Progress Section -->
+            <div class="sub-card-progress-wrap">
+                <div class="sub-progress-header">
+                    <span class="progress-label">
+                        <i class="fa-solid fa-calendar-check"></i> Duration: ${duration} month${duration > 1 ? 's' : ''}
+                    </span>
+                    <span class="progress-val">
+                        ${paid} of ${duration} paid ${remaining > 0 ? `(${remaining} left)` : '✓ Complete'}
+                    </span>
+                </div>
+                <div class="sub-progress-bar-track">
+                    <div class="sub-progress-bar-fill ${isCompleted ? 'completed' : ''}" style="width: ${percent}%;"></div>
+                </div>
+            </div>
+
+            <div class="sub-card-footer">
+                <div class="sub-card-next-renewal">
+                    <i class="fa-regular fa-calendar-days"></i> ${renewalDisplay}
+                </div>
+                <div class="sub-card-actions">
+                    ${isActive ? `
+                        <button type="button" class="sub-action-btn" onclick="toggleSubPause('${sub._id}', 'paused')" title="Pause automatic monthly deduction">
+                            <i class="fa-solid fa-pause"></i> Pause
+                        </button>
+                    ` : isPaused ? `
+                        <button type="button" class="sub-action-btn" onclick="toggleSubPause('${sub._id}', 'active')" title="Resume automatic deduction">
+                            <i class="fa-solid fa-play"></i> Resume
+                        </button>
+                    ` : ''}
+                    <button type="button" class="sub-action-btn delete" onclick="deleteSubscription('${sub._id}')" title="Delete subscription">
+                        <i class="fa-regular fa-trash-can"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+
+        subscriptionsList.appendChild(card);
+    });
+}
+
+// Pause or Resume Subscription
+async function toggleSubPause(subId, newStatus) {
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${SUBS_API_URL}/${subId}/status`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ status: newStatus })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            showSubAlert(`Subscription ${newStatus === 'active' ? 'resumed' : 'paused'} successfully!`);
+            await loadSubscriptions(true);
+        } else {
+            showSubAlert(data.error || 'Failed to update subscription', true);
+        }
+    } catch (err) {
+        console.error('Error toggling subscription status:', err);
+        showSubAlert('Error updating subscription', true);
+    }
+}
+
+// Delete Subscription
+async function deleteSubscription(subId) {
+    if (!confirm('Are you sure you want to remove this subscription? (Past generated transactions will not be deleted).')) {
+        return;
+    }
+
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${SUBS_API_URL}/${subId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            showSubAlert('Subscription deleted successfully');
+            await loadSubscriptions(true);
+        } else {
+            showSubAlert(data.error || 'Failed to delete subscription', true);
+        }
+    } catch (err) {
+        console.error('Error deleting subscription:', err);
+        showSubAlert('Error deleting subscription', true);
+    }
+}
+
+// Handle Add Subscription Form Submission
+async function handleAddSubscriptionSubmit(e) {
+    e.preventDefault();
+
+    const name = subNameInput ? subNameInput.value.trim() : '';
+    const plan = subPlanInput ? subPlanInput.value.trim() : 'Standard';
+    const amount = subAmountInput ? parseFloat(subAmountInput.value) : 0;
+    const category = subCategorySelect ? subCategorySelect.value : 'Entertainment';
+    const billingDay = subBillingDaySelect ? parseInt(subBillingDaySelect.value) : new Date().getDate();
+    const autoDeduct = subAutoDeductCheckbox ? subAutoDeductCheckbox.checked : true;
+    const deductImmediately = subDeductNowCheckbox ? subDeductNowCheckbox.checked : true;
+
+    if (!name) {
+        showSubAlert('Please specify the application or service name', true);
+        if (subNameInput) subNameInput.focus();
+        return;
+    }
+
+    if (!amount || amount <= 0) {
+        showSubAlert('Please specify a valid monthly amount', true);
+        if (subAmountInput) subAmountInput.focus();
+        return;
+    }
+
+    let durationMonths = currentSelectedMonths;
+    if (customMonthsWrap && customMonthsWrap.style.display !== 'none' && subCustomMonthsInput) {
+        const parsedCustom = parseInt(subCustomMonthsInput.value);
+        if (parsedCustom && parsedCustom > 0) {
+            durationMonths = parsedCustom;
+        } else {
+            showSubAlert('Please enter a valid number of months for the custom duration', true);
+            subCustomMonthsInput.focus();
+            return;
+        }
+    }
+
+    if (btnSubmitSubscription) btnSubmitSubscription.disabled = true;
+    if (subSubmitBtnContent) {
+        subSubmitBtnContent.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Setting up Subscription...';
+    }
+
+    try {
+        const token = localStorage.getItem('token');
+        const payload = {
+            name,
+            appId: currentSelectedApp.appId,
+            icon: currentSelectedApp.icon,
+            color: currentSelectedApp.color,
+            plan,
+            amount,
+            category,
+            durationMonths,
+            billingDay,
+            autoDeduct,
+            deductImmediately
+        };
+
+        const res = await fetch(SUBS_API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+
+        if (res.status === 201 && data.success) {
+            showSubAlert(`Subscription for ${name} added! ${deductImmediately ? 'First month deducted from balance.' : ''}`);
+
+            // Trigger notification for immediate deduction
+            if (data.notification) {
+                addNotification(data.notification);
+                showToastNotification(data.notification);
+            }
+
+            // Reset form
+            if (addSubscriptionForm) addSubscriptionForm.reset();
+            initBillingDaySelect();
+            if (subCustomMonthsInput) subCustomMonthsInput.value = '';
+            if (customMonthsWrap) customMonthsWrap.style.display = 'none';
+
+            // Refresh subscriptions list
+            await loadSubscriptions(true);
+
+            // If immediate deduction occurred, refresh transactions & recalculate balance
+            if (deductImmediately) {
+                await getTransactions();
+            }
+
+            // Switch back to active list tab
+            setTimeout(() => {
+                switchSubTab('active');
+            }, 600);
+        } else {
+            showSubAlert(data.error || 'Failed to create subscription', true);
+        }
+    } catch (err) {
+        console.error('Error creating subscription:', err);
+        showSubAlert('Server error creating subscription', true);
+    } finally {
+        if (btnSubmitSubscription) btnSubmitSubscription.disabled = false;
+        if (subSubmitBtnContent) {
+            subSubmitBtnContent.innerHTML = '<i class="fa-solid fa-plus"></i> Start Subscription & Auto-Deduct';
+        }
+    }
+}
+
+// Wire up Subscriptions Event Listeners
+function initSubscriptionsUI() {
+    initBillingDaySelect();
+    initAppPresetChips();
+    initDurationPills();
+
+    // Summary Card Click -> Open Subscriptions Modal
+    if (cardOpenSubscriptions) {
+        cardOpenSubscriptions.addEventListener('click', openSubscriptionsModal);
+    }
+
+    // Header Dropdown -> Open Subscriptions Modal
+    if (openSubscriptionsBtn) {
+        openSubscriptionsBtn.addEventListener('click', () => {
+            if (userDropdown) userDropdown.classList.remove('active');
+            openSubscriptionsModal();
+        });
+    }
+
+    // Sidebar button -> Open Subscriptions Modal
+    if (openSubsSidebarBtn) {
+        openSubsSidebarBtn.addEventListener('click', () => {
+            if (sidebar) sidebar.classList.remove('active');
+            if (overlay) overlay.classList.remove('active');
+            openSubscriptionsModal();
+        });
+    }
+
+    // Close Modal Button
+    if (closeSubscriptionsBtn) {
+        closeSubscriptionsBtn.addEventListener('click', closeSubscriptionsModal);
+    }
+
+    // Modal Background Click
+    if (subscriptionsModal) {
+        subscriptionsModal.addEventListener('click', (e) => {
+            if (e.target === subscriptionsModal) {
+                closeSubscriptionsModal();
+            }
+        });
+    }
+
+    // Modal Tab Switching
+    if (tabBtnSubActive) {
+        tabBtnSubActive.addEventListener('click', () => switchSubTab('active'));
+    }
+    if (tabBtnSubAdd) {
+        tabBtnSubAdd.addEventListener('click', () => switchSubTab('add'));
+    }
+    if (emptyStateAddSubBtn) {
+        emptyStateAddSubBtn.addEventListener('click', () => switchSubTab('add'));
+    }
+
+    // Add Subscription Form Submit
+    if (addSubscriptionForm) {
+        addSubscriptionForm.addEventListener('submit', handleAddSubscriptionSubmit);
+    }
+}
+
 // App Initialization
 function init() {
     initUserProfile();
@@ -1783,7 +2740,11 @@ function init() {
     syncDateInput();
     updateValues();
     renderHistoryDOM();
+    initSubscriptionsUI();
+    initNotificationsUI();
+    loadSubscriptions(true);
 }
 
 // Initial Kickoff
 getTransactions();
+
