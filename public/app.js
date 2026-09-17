@@ -46,8 +46,6 @@ const expenseEl = document.getElementById('total-expense');
 const savingsRateEl = document.getElementById('savings-rate');
 const savingsCirclePath = document.getElementById('savings-circle-path');
 const savingsRingText = document.getElementById('savings-ring-text');
-const cardSubIncome = document.getElementById('card-sub-income');
-const cardSubExpense = document.getElementById('card-sub-expense');
 
 // DOM Elements: Month & Period Selector Bar
 const monthBarCurrentLabel = document.getElementById('month-bar-current-label');
@@ -1132,9 +1130,6 @@ function updateValues() {
     balanceEl.innerText = (total < 0 ? '-' : '') + formatCurrency(total);
     incomeEl.innerText = '+' + formatCurrency(income);
     expenseEl.innerText = '-' + formatCurrency(expense);
-
-    if (cardSubIncome) cardSubIncome.innerText = formatCurrency(income);
-    if (cardSubExpense) cardSubExpense.innerText = formatCurrency(expense);
 
     // Dynamic Card Subtitles reflecting the active month/period
     let periodText = '';
