@@ -48,11 +48,11 @@
                     <i class="fa-regular fa-bell"></i>
                 </button>
 
-                <!-- Profile Badge (Shows Avatar + Hello, Himanshu + Manage your account) -->
+                <!-- Profile Badge (Shows Avatar + User Display + Manage your account) -->
                 <div class="user-profile-badge" id="user-menu-btn" tabindex="0" role="button" aria-haspopup="true">
-                    <div class="user-avatar" id="user-avatar-initial">H</div>
+                    <div class="user-avatar" id="user-avatar-initial">G</div>
                     <div class="user-text-col">
-                        <span id="user-display" class="user-name">Hello, Himanshu</span>
+                        <span id="user-display" class="user-name">Welcome, Guest</span>
                         <span class="user-subtext">Manage your account</span>
                     </div>
                     <i class="fa-solid fa-chevron-down user-chevron"></i>
@@ -61,11 +61,14 @@
                 <!-- Dropdown Menu -->
                 <div class="profile-dropdown-menu" id="user-dropdown">
                     <div class="dropdown-user-header">
-                        <strong id="dropdown-username">Himanshu</strong>
-                        <span id="dropdown-email">user@example.com</span>
+                        <strong id="dropdown-username">Guest</strong>
+                        <span id="dropdown-email">Loading...</span>
                     </div>
                     <a href="#" id="open-account-btn" class="dropdown-item-link">
-                        <i class="fa-regular fa-user"></i> Manage Account
+                        <i class="fa-regular fa-user"></i> Account Settings
+                    </a>
+                    <a href="#" id="open-change-password-btn" class="dropdown-item-link">
+                        <i class="fa-solid fa-shield-halved"></i> Security & Devices
                     </a>
                     <a href="#" id="open-bin-from-menu" class="dropdown-item-link">
                         <i class="fa-solid fa-trash-arrow-up"></i> Recycle Bin
@@ -594,10 +597,10 @@
             <div class="modal-body">
                 <!-- User Profile Overview -->
                 <div class="account-profile-box">
-                    <div class="account-avatar-large" id="modal-avatar-initial">H</div>
+                    <div class="account-avatar-large" id="modal-avatar-initial">G</div>
                     <div class="account-info-text">
-                        <h3 id="modal-username">Himanshu</h3>
-                        <p id="modal-email">user@example.com</p>
+                        <h3 id="modal-username">Guest</h3>
+                        <p id="modal-email">guest@example.com</p>
                     </div>
                 </div>
 
@@ -613,7 +616,145 @@
                     </div>
                 </div>
 
-                <div class="account-section-title">Quick Actions</div>
+                <!-- ================= SECURITY SECTION ================= -->
+                <div class="account-section-title" id="security-section-heading">
+                    <i class="fa-solid fa-shield-halved" style="color: var(--primary-purple); font-size: 0.8rem; margin-right: 4px;"></i> Security
+                </div>
+
+                <!-- Password Sub-section -->
+                <div class="security-card-group">
+                    <div class="security-group-header">
+                        <div>
+                            <div class="security-group-title">Password</div>
+                            <div class="security-group-sub">Change your password to keep your account safe</div>
+                        </div>
+                    </div>
+
+                    <form id="change-password-form" class="account-password-form" novalidate>
+                        <!-- Alert Notification inside Account Modal -->
+                        <div id="password-alert-box" class="alert-clean-danger" style="display: none; margin-bottom: 14px;" role="alert">
+                            <i class="fa-solid fa-circle-exclamation"></i>
+                            <span id="password-alert-text"></span>
+                        </div>
+
+                        <div class="form-group-clean">
+                            <label for="current-password" class="form-label-clean">
+                                <i class="fa-solid fa-lock" style="color: var(--primary-purple); font-size: 0.74rem;"></i> Current Password
+                            </label>
+                            <div class="input-icon-wrap has-toggle">
+                                <i class="fa-solid fa-key input-lead-icon"></i>
+                                <input 
+                                    type="password" 
+                                    id="current-password" 
+                                    class="input-clean" 
+                                    placeholder="Enter current password" 
+                                    autocomplete="current-password"
+                                    required
+                                >
+                                <button 
+                                    type="button" 
+                                    class="password-toggle-btn" 
+                                    data-target="current-password" 
+                                    aria-label="Toggle current password visibility"
+                                    title="Show or hide password"
+                                >
+                                    <i class="fa-regular fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="form-group-clean">
+                            <label for="new-password" class="form-label-clean">
+                                <i class="fa-solid fa-shield-cat" style="color: var(--primary-purple); font-size: 0.74rem;"></i> New Password
+                            </label>
+                            <div class="input-icon-wrap has-toggle">
+                                <i class="fa-solid fa-key input-lead-icon"></i>
+                                <input 
+                                    type="password" 
+                                    id="new-password" 
+                                    class="input-clean" 
+                                    placeholder="At least 6 characters" 
+                                    autocomplete="new-password"
+                                    minlength="6"
+                                    required
+                                >
+                                <button 
+                                    type="button" 
+                                    class="password-toggle-btn" 
+                                    data-target="new-password" 
+                                    aria-label="Toggle new password visibility"
+                                    title="Show or hide password"
+                                >
+                                    <i class="fa-regular fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="form-group-clean" style="margin-bottom: 16px;">
+                            <label for="confirm-new-password" class="form-label-clean">
+                                <i class="fa-solid fa-check-double" style="color: var(--primary-purple); font-size: 0.74rem;"></i> Confirm New Password
+                            </label>
+                            <div class="input-icon-wrap has-toggle">
+                                <i class="fa-solid fa-key input-lead-icon"></i>
+                                <input 
+                                    type="password" 
+                                    id="confirm-new-password" 
+                                    class="input-clean" 
+                                    placeholder="Re-enter new password" 
+                                    autocomplete="new-password"
+                                    minlength="6"
+                                    required
+                                >
+                                <button 
+                                    type="button" 
+                                    class="password-toggle-btn" 
+                                    data-target="confirm-new-password" 
+                                    aria-label="Toggle confirm password visibility"
+                                    title="Show or hide password"
+                                >
+                                    <i class="fa-regular fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn-primary-purple" id="submit-change-password-btn" style="width: 100%; height: 42px;">
+                            <span id="change-pwd-btn-content">
+                                <i class="fa-solid fa-key"></i> Change Password
+                            </span>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Logged-in Devices Sub-section -->
+                <div class="security-card-group" style="margin-top: 20px;">
+                    <div class="security-group-header">
+                        <div>
+                            <div class="security-group-title">Logged-in Devices</div>
+                            <div class="security-group-sub">Manage active sessions across your phones, tablets, and computers</div>
+                        </div>
+                        <span id="device-count-badge" class="badge-device-count">1 active device</span>
+                    </div>
+
+                    <!-- Session Alert Notification -->
+                    <div id="session-alert-box" class="alert-clean-success" style="display: none; margin-bottom: 12px;" role="alert">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <span id="session-alert-text"></span>
+                    </div>
+
+                    <!-- Sessions Container -->
+                    <div id="sessions-list" class="sessions-list-container">
+                        <!-- Dynamically populated session cards -->
+                        <div class="session-loading-state">
+                            <i class="fa-solid fa-spinner fa-spin"></i> Loading active devices...
+                        </div>
+                    </div>
+
+                    <button type="button" id="logout-all-other-btn" class="btn-logout-all-others" style="display: none;">
+                        <i class="fa-solid fa-arrow-right-from-bracket"></i> Log Out All Other Devices
+                    </button>
+                </div>
+
+                <div class="account-section-title" style="margin-top: 24px;">Quick Actions</div>
                 <div style="display: flex; flex-direction: column; gap: 8px;">
                     <button type="button" class="btn-primary-purple" onclick="logout()" style="background: rgba(255, 92, 114, 0.15); color: var(--expense-coral); border: 1px solid rgba(255, 92, 114, 0.3); box-shadow: none;">
                         <i class="fa-solid fa-arrow-right-from-bracket"></i> Sign Out of Account

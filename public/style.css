@@ -1941,6 +1941,51 @@ body {
     line-height: 1;
 }
 
+/* Guest Badge on Login Page */
+.auth-guest-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 4px 12px;
+    background: rgba(169, 112, 255, 0.1);
+    border: 1px solid rgba(169, 112, 255, 0.28);
+    border-radius: 20px;
+    color: var(--primary-purple);
+    font-size: 0.76rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    margin-bottom: 12px;
+    user-select: none;
+    backdrop-filter: blur(8px);
+}
+
+.guest-pulse-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: var(--primary-purple);
+    box-shadow: 0 0 8px var(--primary-purple);
+    display: inline-block;
+    animation: guestPulse 2s infinite ease-in-out;
+}
+
+@keyframes guestPulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.4;
+        transform: scale(0.8);
+    }
+}
+
+.guest-highlight {
+    background: linear-gradient(135deg, #A970FF 0%, #00D9C0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
 .auth-title {
     font-size: 1.35rem;
     font-weight: 600;
@@ -2047,7 +2092,8 @@ body {
 }
 
 /* Input Fields */
-.auth-card-modern .input-clean {
+.auth-card-modern .input-clean,
+.account-password-form .input-clean {
     width: 100%;
     padding: 12px 14px 12px 40px;
     background: #111116;
@@ -2060,15 +2106,66 @@ body {
     transition: all var(--transition-fast);
 }
 
-.auth-card-modern .input-clean::placeholder {
+.auth-card-modern .input-clean::placeholder,
+.account-password-form .input-clean::placeholder {
     color: var(--text-muted);
     font-size: 0.82rem;
 }
 
-.auth-card-modern .input-clean:focus {
+.auth-card-modern .input-clean:focus,
+.account-password-form .input-clean:focus {
     border-color: var(--primary-purple);
     box-shadow: 0 0 0 3px rgba(169, 112, 255, 0.14);
     background: rgba(17, 17, 22, 0.98);
+}
+
+/* Account Password Form container */
+.account-password-form {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+.account-password-form .form-group-clean {
+    margin-bottom: 14px;
+}
+
+.account-password-form .form-group-clean:last-of-type {
+    margin-bottom: 16px;
+}
+
+.account-password-form .btn-primary-purple {
+    width: 100%;
+    height: 42px;
+    padding: 0 16px;
+    background: var(--primary-purple);
+    color: #0D0D10;
+    border: none;
+    border-radius: var(--radius-md);
+    font-family: inherit;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all var(--transition-fast);
+    box-shadow: 0 4px 14px rgba(169, 112, 255, 0.28);
+}
+
+.account-password-form .btn-primary-purple:hover:not(:disabled) {
+    background: var(--primary-purple-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(169, 112, 255, 0.38);
+}
+
+.account-password-form .btn-primary-purple:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
 }
 
 /* Password Input With Toggle Button */
@@ -2238,4 +2335,231 @@ body {
         left: 12px;
         font-size: 0.82rem;
     }
+}
+
+/* ===================================================
+   SECURITY & LOGGED-IN DEVICES
+   =================================================== */
+.security-card-group {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+.security-group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.security-group-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.security-group-sub {
+    font-size: 0.76rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.badge-device-count {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 9px;
+    background: var(--primary-purple-subtle);
+    border: 1px solid rgba(169, 112, 255, 0.3);
+    border-radius: 20px;
+    color: var(--primary-purple);
+    font-size: 0.72rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* Sessions List */
+.sessions-list-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.session-card-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: rgba(17, 17, 22, 0.75);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    transition: border-color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.session-card-item:hover {
+    background: rgba(23, 23, 27, 0.95);
+    border-color: rgba(169, 112, 255, 0.25);
+}
+
+.session-card-item.current-session {
+    border-color: rgba(0, 217, 192, 0.35);
+    background: rgba(0, 217, 192, 0.03);
+}
+
+.session-info-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.session-device-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary-purple);
+    font-size: 0.95rem;
+    flex-shrink: 0;
+}
+
+.session-card-item.current-session .session-device-icon {
+    color: var(--income-teal);
+    border-color: rgba(0, 217, 192, 0.3);
+    background: rgba(0, 217, 192, 0.08);
+}
+
+.session-device-details {
+    min-width: 0;
+}
+
+.session-device-name {
+    font-size: 0.84rem;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.session-device-name strong {
+    font-weight: 600;
+}
+
+.session-meta-sep {
+    color: var(--text-muted);
+    font-size: 0.7rem;
+}
+
+.session-os, .session-browser {
+    color: var(--text-secondary);
+}
+
+.session-device-sub {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-top: 3px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.session-ip-badge {
+    background: rgba(255, 255, 255, 0.04);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+}
+
+.badge-current-device {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 9px;
+    background: var(--income-teal-subtle);
+    border: 1px solid rgba(0, 217, 192, 0.3);
+    border-radius: var(--radius-sm);
+    color: var(--income-teal);
+    font-size: 0.74rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.btn-logout-device {
+    background: rgba(255, 92, 114, 0.08);
+    border: 1px solid rgba(255, 92, 114, 0.25);
+    color: var(--expense-coral);
+    padding: 5px 11px;
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+}
+
+.btn-logout-device:hover {
+    background: var(--expense-coral);
+    color: #0D0D10;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(255, 92, 114, 0.25);
+}
+
+.btn-logout-all-others {
+    width: 100%;
+    padding: 9px 14px;
+    background: rgba(255, 92, 114, 0.1);
+    border: 1px solid rgba(255, 92, 114, 0.28);
+    color: var(--expense-coral);
+    border-radius: var(--radius-md);
+    font-family: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all var(--transition-fast);
+}
+
+.btn-logout-all-others:hover:not(:disabled) {
+    background: rgba(255, 92, 114, 0.18);
+    border-color: var(--expense-coral);
+    transform: translateY(-1px);
+}
+
+.btn-logout-all-others:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.session-loading-state,
+.session-empty-state {
+    text-align: center;
+    padding: 18px 12px;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    background: rgba(17, 17, 22, 0.4);
+    border-radius: var(--radius-md);
+    border: 1px dashed var(--border-subtle);
 }

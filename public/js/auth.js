@@ -43,7 +43,20 @@ async function loginUser(email, password) {
 }
 
 // Logout User
-function logout() {
+async function logout() {
+    const token = localStorage.getItem('token');
+    if (token) {
+        try {
+            await fetch(`${API_AUTH_URL}/logout`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+        } catch (e) {
+            // Proceed with local logout regardless of network status
+        }
+    }
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     window.location.href = 'login.html';

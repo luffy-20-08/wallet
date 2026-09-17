@@ -23,12 +23,23 @@ app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // DB Config
-const db = process.env.MONGO_URI || 'mongodb+srv://luffywallet:luffyandhimanshu@wallet.nuv4bmz.mongodb.net/wallet?appName=wallet';
+// Safeguard: In local development, never default to production 'wallet' database
+const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
+const defaultDevDb = 'mongodb+srv://luffywallet:luffyandhimanshu@wallet.nuv4bmz.mongodb.net/wallet-dev?appName=wallet';
+const defaultProdDb = 'mongodb+srv://luffywallet:luffyandhimanshu@wallet.nuv4bmz.mongodb.net/wallet?appName=wallet';
+
+const db = process.env.MONGO_URI || (isProduction ? defaultProdDb : defaultDevDb);
 
 // Connect to Mongo (cached for serverless)
 const connectDB = async () => {
     if (mongoose.connection.readyState >= 1) return;
-    return mongoose.connect(db);
+    await mongoose.connect(db);
+    const dbName = mongoose.connection.name;
+    if (dbName === 'wallet-dev') {
+        console.log(`[Database] Connected to DEVELOPMENT database: "${dbName}" (Production "wallet" database is protected)`);
+    } else {
+        console.log(`[Database] Connected to database: "${dbName}"`);
+    }
 };
 
 // Ensure DB is connected before handling requests

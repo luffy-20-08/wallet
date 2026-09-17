@@ -12,6 +12,7 @@ const userMenuBtn = document.getElementById('user-menu-btn');
 const userDropdown = document.getElementById('user-dropdown');
 const headerSearchInput = document.getElementById('header-search-input');
 const openAccountBtn = document.getElementById('open-account-btn');
+const openChangePasswordBtn = document.getElementById('open-change-password-btn');
 const openBinFromMenu = document.getElementById('open-bin-from-menu');
 
 // Account Modal Elements
@@ -22,6 +23,21 @@ const modalUsername = document.getElementById('modal-username');
 const modalEmail = document.getElementById('modal-email');
 const dropdownUsername = document.getElementById('dropdown-username');
 const dropdownEmail = document.getElementById('dropdown-email');
+const changePasswordForm = document.getElementById('change-password-form');
+const currentPasswordInput = document.getElementById('current-password');
+const newPasswordInput = document.getElementById('new-password');
+const confirmNewPasswordInput = document.getElementById('confirm-new-password');
+const passwordAlertBox = document.getElementById('password-alert-box');
+const passwordAlertText = document.getElementById('password-alert-text');
+const submitChangePasswordBtn = document.getElementById('submit-change-password-btn');
+const changePwdBtnContent = document.getElementById('change-pwd-btn-content');
+
+// Session / Devices Elements
+const sessionsList = document.getElementById('sessions-list');
+const deviceCountBadge = document.getElementById('device-count-badge');
+const sessionAlertBox = document.getElementById('session-alert-box');
+const sessionAlertText = document.getElementById('session-alert-text');
+const logoutAllOtherBtn = document.getElementById('logout-all-other-btn');
 
 // DOM Elements: Summary Cards
 const balanceEl = document.getElementById('total-balance');
@@ -164,6 +180,14 @@ async function getTransactions() {
                 'Authorization': `Bearer ${token}`
             }
         });
+
+        if (res.status === 401) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = 'login.html';
+            return;
+        }
+
         const data = await res.json();
         transactions = data.data || [];
 
@@ -193,16 +217,32 @@ async function getDeletedTransactions() {
 // USER PROFILE & ACCOUNT MODAL
 // ===================================================
 function initUserProfile() {
-    const user = JSON.parse(localStorage.getItem('user')) || { username: 'Himanshu', email: 'user@example.com' };
-    const initial = (user.username ? user.username.charAt(0) : 'H').toUpperCase();
+    let user = null;
+    try {
+        user = JSON.parse(localStorage.getItem('user'));
+    } catch (e) {
+        user = null;
+    }
 
-    if (userDisplay) userDisplay.innerText = `Hello, ${user.username}`;
+    if (!user || !user.username) {
+        if (userDisplay) userDisplay.innerText = 'Welcome, Guest';
+        if (userAvatarInitial) userAvatarInitial.innerText = 'G';
+        if (modalAvatarInitial) modalAvatarInitial.innerText = 'G';
+        if (modalUsername) modalUsername.innerText = 'Guest';
+        if (modalEmail) modalEmail.innerText = '';
+        if (dropdownUsername) dropdownUsername.innerText = 'Guest';
+        if (dropdownEmail) dropdownEmail.innerText = '';
+        return;
+    }
+
+    const initial = (user.username.charAt(0) || 'U').toUpperCase();
+    if (userDisplay) userDisplay.innerText = `Welcome, ${user.username}`;
     if (userAvatarInitial) userAvatarInitial.innerText = initial;
     if (modalAvatarInitial) modalAvatarInitial.innerText = initial;
     if (modalUsername) modalUsername.innerText = user.username;
-    if (modalEmail) modalEmail.innerText = user.email || 'user@example.com';
+    if (modalEmail) modalEmail.innerText = user.email || '';
     if (dropdownUsername) dropdownUsername.innerText = user.username;
-    if (dropdownEmail) dropdownEmail.innerText = user.email || 'user@example.com';
+    if (dropdownEmail) dropdownEmail.innerText = user.email || '';
 }
 
 if (userMenuBtn) {
@@ -224,12 +264,298 @@ if (openAccountBtn) {
         e.preventDefault();
         userDropdown.classList.remove('show');
         accountModal.classList.add('active');
+        loadActiveSessions();
+    });
+}
+if (openChangePasswordBtn) {
+    openChangePasswordBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        userDropdown.classList.remove('show');
+        accountModal.classList.add('active');
+        loadActiveSessions();
+        if (currentPasswordInput) {
+            setTimeout(() => currentPasswordInput.focus(), 100);
+        }
     });
 }
 if (closeAccountBtn) {
     closeAccountBtn.addEventListener('click', () => {
         accountModal.classList.remove('active');
     });
+}
+
+// Password toggle buttons in account modal
+document.querySelectorAll('#account-modal .password-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const targetId = btn.getAttribute('data-target');
+        const input = document.getElementById(targetId);
+        if (input) {
+            const isPassword = input.type === 'password';
+            input.type = isPassword ? 'text' : 'password';
+            const icon = btn.querySelector('i');
+            if (icon) {
+                icon.className = isPassword ? 'fa-regular fa-eye-slash' : 'fa-regular fa-eye';
+            }
+        }
+    });
+});
+
+// Change Password form submission
+if (changePasswordForm) {
+    changePasswordForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const currentPassword = currentPasswordInput ? currentPasswordInput.value : '';
+        const newPassword = newPasswordInput ? newPasswordInput.value : '';
+        const confirmNewPassword = confirmNewPasswordInput ? confirmNewPasswordInput.value : '';
+
+        // Reset alert box
+        if (passwordAlertBox) {
+            passwordAlertBox.className = 'alert-clean-danger';
+            passwordAlertBox.style.display = 'none';
+        }
+
+        if (!currentPassword || !newPassword || !confirmNewPassword) {
+            if (passwordAlertText && passwordAlertBox) {
+                passwordAlertText.textContent = 'Please fill in all password fields';
+                passwordAlertBox.style.display = 'flex';
+            }
+            return;
+        }
+
+        if (newPassword.length < 6) {
+            if (passwordAlertText && passwordAlertBox) {
+                passwordAlertText.textContent = 'New password must be at least 6 characters long';
+                passwordAlertBox.style.display = 'flex';
+            }
+            return;
+        }
+
+        if (newPassword !== confirmNewPassword) {
+            if (passwordAlertText && passwordAlertBox) {
+                passwordAlertText.textContent = 'New passwords do not match';
+                passwordAlertBox.style.display = 'flex';
+            }
+            return;
+        }
+
+        if (currentPassword === newPassword) {
+            if (passwordAlertText && passwordAlertBox) {
+                passwordAlertText.textContent = 'New password cannot be the same as current password';
+                passwordAlertBox.style.display = 'flex';
+            }
+            return;
+        }
+
+        const token = localStorage.getItem('token');
+        if (!token) {
+            window.location.href = 'login.html';
+            return;
+        }
+
+        if (submitChangePasswordBtn && changePwdBtnContent) {
+            submitChangePasswordBtn.disabled = true;
+            changePwdBtnContent.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Updating...';
+        }
+
+        try {
+            const res = await fetch('/api/auth/change-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ currentPassword, newPassword })
+            });
+
+            const data = await res.json();
+
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || 'Failed to update password');
+            }
+
+            // Success feedback
+            if (passwordAlertBox && passwordAlertText) {
+                passwordAlertBox.className = 'alert-clean-success';
+                const icon = passwordAlertBox.querySelector('i');
+                if (icon) icon.className = 'fa-solid fa-circle-check';
+                passwordAlertText.textContent = data.message || 'Password changed successfully. Other devices have been signed out.';
+                passwordAlertBox.style.display = 'flex';
+            }
+
+            changePasswordForm.reset();
+            // Refresh active sessions since other devices were signed out
+            await loadActiveSessions();
+        } catch (err) {
+            if (passwordAlertBox && passwordAlertText) {
+                passwordAlertBox.className = 'alert-clean-danger';
+                const icon = passwordAlertBox.querySelector('i');
+                if (icon) icon.className = 'fa-solid fa-circle-exclamation';
+                passwordAlertText.textContent = err.message || 'Error updating password';
+                passwordAlertBox.style.display = 'flex';
+            }
+        } finally {
+            if (submitChangePasswordBtn && changePwdBtnContent) {
+                submitChangePasswordBtn.disabled = false;
+                changePwdBtnContent.innerHTML = '<i class="fa-solid fa-key"></i> Change Password';
+            }
+        }
+    });
+}
+
+// ===================================================
+// ACTIVE SESSIONS & DEVICE MANAGEMENT
+// ===================================================
+async function loadActiveSessions() {
+    if (!sessionsList) return;
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+        const res = await fetch('/api/auth/sessions', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (res.status === 401) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = 'login.html';
+            return;
+        }
+
+        const data = await res.json();
+        if (!data.success) {
+            sessionsList.innerHTML = `<div class="session-empty-state"><i class="fa-solid fa-triangle-exclamation"></i> ${escapeHTML(data.error || 'Failed to load devices')}</div>`;
+            return;
+        }
+
+        if (deviceCountBadge) {
+            deviceCountBadge.innerText = `${data.deviceCount} active device${data.deviceCount === 1 ? '' : 's'}`;
+        }
+
+        if (logoutAllOtherBtn) {
+            logoutAllOtherBtn.style.display = data.deviceCount > 1 ? 'inline-flex' : 'none';
+        }
+
+        if (!data.sessions || data.sessions.length === 0) {
+            sessionsList.innerHTML = '<div class="session-empty-state">No active devices found.</div>';
+            return;
+        }
+
+        sessionsList.innerHTML = '';
+        data.sessions.forEach(sess => {
+            const card = document.createElement('div');
+            card.className = `session-card-item ${sess.isCurrent ? 'current-session' : ''}`;
+
+            let deviceIcon = 'fa-desktop';
+            if (sess.deviceType === 'Mobile Device') deviceIcon = 'fa-mobile-screen';
+            else if (sess.deviceType === 'Tablet') deviceIcon = 'fa-tablet-screen-button';
+            else if (sess.deviceType === 'Laptop') deviceIcon = 'fa-laptop';
+
+            card.innerHTML = `
+                <div class="session-info-left">
+                    <div class="session-device-icon">
+                        <i class="fa-solid ${deviceIcon}"></i>
+                    </div>
+                    <div class="session-device-details">
+                        <div class="session-device-name">
+                            <strong>${escapeHTML(sess.isCurrent ? 'Current Device' : sess.deviceType)}</strong>
+                            <span class="session-meta-sep">•</span>
+                            <span class="session-os">${escapeHTML(sess.os)}</span>
+                            <span class="session-meta-sep">•</span>
+                            <span class="session-browser">${escapeHTML(sess.browser)}</span>
+                        </div>
+                        <div class="session-device-sub">
+                            <span class="session-last-active"><i class="fa-regular fa-clock"></i> Last active: ${escapeHTML(sess.lastActiveText)}</span>
+                            ${sess.ipAddress ? `<span class="session-ip-badge">${escapeHTML(sess.ipAddress)}</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+                <div class="session-action-right">
+                    ${sess.isCurrent ? 
+                        '<span class="badge-current-device"><i class="fa-solid fa-circle-check"></i> Current Device</span>' : 
+                        `<button type="button" class="btn-logout-device" onclick="logoutDevice('${sess.id}')" title="Sign out this device">
+                            <i class="fa-solid fa-arrow-right-from-bracket"></i> Log out
+                        </button>`
+                    }
+                </div>
+            `;
+            sessionsList.appendChild(card);
+        });
+    } catch (err) {
+        console.error('Error loading sessions:', err);
+        sessionsList.innerHTML = '<div class="session-empty-state"><i class="fa-solid fa-triangle-exclamation"></i> Could not load active devices.</div>';
+    }
+}
+
+async function logoutDevice(sessionId) {
+    const token = localStorage.getItem('token');
+    if (!token || !sessionId) return;
+
+    try {
+        const res = await fetch(`/api/auth/sessions/${sessionId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        const data = await res.json();
+        if (data.success) {
+            showSessionAlert('Device logged out successfully.');
+            await loadActiveSessions();
+        } else {
+            showSessionAlert(data.error || 'Failed to log out device', true);
+        }
+    } catch (err) {
+        showSessionAlert('Failed to log out device', true);
+    }
+}
+
+if (logoutAllOtherBtn) {
+    logoutAllOtherBtn.addEventListener('click', async () => {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        logoutAllOtherBtn.disabled = true;
+        logoutAllOtherBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Logging out devices...';
+
+        try {
+            const res = await fetch('/api/auth/sessions/logout-all-other', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            const data = await res.json();
+            if (data.success) {
+                showSessionAlert('All other devices have been signed out.');
+                await loadActiveSessions();
+            } else {
+                showSessionAlert(data.error || 'Failed to log out other devices', true);
+            }
+        } catch (err) {
+            showSessionAlert('Failed to log out other devices', true);
+        } finally {
+            logoutAllOtherBtn.disabled = false;
+            logoutAllOtherBtn.innerHTML = '<i class="fa-solid fa-arrow-right-from-bracket"></i> Log Out All Other Devices';
+        }
+    });
+}
+
+function showSessionAlert(msg, isError = false) {
+    if (!sessionAlertBox || !sessionAlertText) return;
+    sessionAlertBox.className = isError ? 'alert-clean-danger' : 'alert-clean-success';
+    const icon = sessionAlertBox.querySelector('i');
+    if (icon) {
+        icon.className = isError ? 'fa-solid fa-circle-exclamation' : 'fa-solid fa-circle-check';
+    }
+    sessionAlertText.textContent = msg;
+    sessionAlertBox.style.display = 'flex';
+    setTimeout(() => {
+        if (sessionAlertBox) sessionAlertBox.style.display = 'none';
+    }, 4500);
 }
 if (openBinFromMenu) {
     openBinFromMenu.addEventListener('click', (e) => {

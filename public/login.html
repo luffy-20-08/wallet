@@ -34,8 +34,16 @@
                 </div>
                 <span class="brand-name">Wallet</span>
             </div>
-            <h1 class="auth-title">Welcome Back</h1>
-            <p class="auth-subtitle">Log in to manage your financial portfolio</p>
+
+            <!-- Guest Role Indicator Before Authentication -->
+            <div class="auth-guest-badge" id="auth-guest-indicator" title="Current status: Unauthenticated">
+                <span class="guest-pulse-dot"></span>
+                <i class="fa-regular fa-circle-user"></i>
+                <span>Guest</span>
+            </div>
+
+            <h1 class="auth-title">Welcome, <span class="guest-highlight">Guest</span></h1>
+            <p class="auth-subtitle">Log in to manage your personal finances and transactions</p>
         </div>
 
         <!-- Alert Notification Box -->
@@ -56,7 +64,7 @@
                         type="text" 
                         id="email" 
                         class="input-clean" 
-                        placeholder="e.g. himanshu or name@email.com" 
+                        placeholder="e.g. your_username or name@email.com" 
                         autocomplete="username"
                         required
                     >
