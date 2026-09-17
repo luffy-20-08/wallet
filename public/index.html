@@ -101,6 +101,55 @@
             </div>
         </header>
 
+        <!-- ================= MONTH & PERIOD SELECTOR BAR ================= -->
+        <section class="dashboard-month-bar" aria-label="Month and Period Selector">
+            <div class="month-bar-left">
+                <div class="month-bar-info">
+                    <span class="month-bar-icon"><i class="fa-regular fa-calendar-days"></i></span>
+                    <span class="month-bar-heading">Active Period:</span>
+                    <span class="month-bar-selected-badge" id="month-bar-current-label">September 2026</span>
+                </div>
+                <div class="month-quick-pills">
+                    <button type="button" class="month-quick-btn active" id="btn-quick-this-month" data-period="current">This Month</button>
+                    <button type="button" class="month-quick-btn" id="btn-quick-entire-year" data-period="year">Entire Year</button>
+                    <button type="button" class="month-quick-btn" id="btn-quick-lifetime" data-period="lifetime">All Time</button>
+                </div>
+            </div>
+
+            <div class="month-bar-center">
+                <button type="button" class="month-step-btn" id="month-ribbon-prev" title="Previous Month">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+                <div class="month-ribbon" id="month-ribbon">
+                    <button type="button" class="ribbon-month-btn" data-month="0">Jan</button>
+                    <button type="button" class="ribbon-month-btn" data-month="1">Feb</button>
+                    <button type="button" class="ribbon-month-btn" data-month="2">Mar</button>
+                    <button type="button" class="ribbon-month-btn" data-month="3">Apr</button>
+                    <button type="button" class="ribbon-month-btn" data-month="4">May</button>
+                    <button type="button" class="ribbon-month-btn" data-month="5">Jun</button>
+                    <button type="button" class="ribbon-month-btn" data-month="6">Jul</button>
+                    <button type="button" class="ribbon-month-btn" data-month="7">Aug</button>
+                    <button type="button" class="ribbon-month-btn" data-month="8">Sep</button>
+                    <button type="button" class="ribbon-month-btn" data-month="9">Oct</button>
+                    <button type="button" class="ribbon-month-btn" data-month="10">Nov</button>
+                    <button type="button" class="ribbon-month-btn" data-month="11">Dec</button>
+                    <button type="button" class="ribbon-month-btn" data-month="all">All</button>
+                </div>
+                <button type="button" class="month-step-btn" id="month-ribbon-next" title="Next Month">
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+            </div>
+
+            <div class="month-bar-right">
+                <div class="year-select-wrap">
+                    <i class="fa-solid fa-calendar"></i>
+                    <select id="dashboard-year-select" class="month-bar-year-select" title="Select Year">
+                        <!-- Populated dynamically -->
+                    </select>
+                </div>
+            </div>
+        </section>
+
         <!-- ================= 1. FINANCIAL SUMMARY CARDS ================= -->
         <section class="summary-cards-grid" aria-label="Financial Summary">
             <!-- Total Balance -->
@@ -118,7 +167,7 @@
                     <div class="summary-value" id="total-balance">₹0.00</div>
                 </div>
                 <div class="summary-bottom-row">
-                    <span class="trend-positive"><i class="fa-solid fa-arrow-up"></i> 12.4% this month</span>
+                    <span class="trend-positive" id="card-balance-subtitle"><i class="fa-solid fa-calendar-check"></i> 12.4% this month</span>
                     <div class="sub-breakdown">
                         <span>Income <strong id="card-sub-income" style="color: var(--income-teal);">₹0</strong></span>
                         <span>Expense <strong id="card-sub-expense" style="color: var(--expense-coral);">₹0</strong></span>
@@ -147,7 +196,7 @@
                     </div>
                 </div>
                 <div class="summary-bottom-row">
-                    <span class="trend-positive"><i class="fa-solid fa-arrow-up"></i> 8.2% vs last month</span>
+                    <span class="trend-positive" id="card-income-subtitle"><i class="fa-solid fa-arrow-up"></i> 8.2% vs last month</span>
                 </div>
             </div>
 
@@ -172,7 +221,7 @@
                     </div>
                 </div>
                 <div class="summary-bottom-row">
-                    <span class="trend-negative"><i class="fa-solid fa-arrow-down"></i> 3.1% vs last month</span>
+                    <span class="trend-negative" id="card-expense-subtitle"><i class="fa-solid fa-arrow-down"></i> 3.1% vs last month</span>
                 </div>
             </div>
 
@@ -198,7 +247,7 @@
                     </div>
                 </div>
                 <div class="summary-bottom-row">
-                    <span class="trend-positive"><i class="fa-solid fa-arrow-up"></i> 5.4% vs last month</span>
+                    <span class="trend-positive" id="card-savings-subtitle"><i class="fa-solid fa-arrow-up"></i> 5.4% vs last month</span>
                 </div>
             </div>
 

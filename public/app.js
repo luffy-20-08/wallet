@@ -49,6 +49,22 @@ const savingsRingText = document.getElementById('savings-ring-text');
 const cardSubIncome = document.getElementById('card-sub-income');
 const cardSubExpense = document.getElementById('card-sub-expense');
 
+// DOM Elements: Month & Period Selector Bar
+const monthBarCurrentLabel = document.getElementById('month-bar-current-label');
+const btnQuickThisMonth = document.getElementById('btn-quick-this-month');
+const btnQuickEntireYear = document.getElementById('btn-quick-entire-year');
+const btnQuickLifetime = document.getElementById('btn-quick-lifetime');
+const monthRibbonPrev = document.getElementById('month-ribbon-prev');
+const monthRibbonNext = document.getElementById('month-ribbon-next');
+const monthRibbon = document.getElementById('month-ribbon');
+const dashboardYearSelect = document.getElementById('dashboard-year-select');
+
+// DOM Elements: Card Subtitles
+const cardBalanceSubtitle = document.getElementById('card-balance-subtitle');
+const cardIncomeSubtitle = document.getElementById('card-income-subtitle');
+const cardExpenseSubtitle = document.getElementById('card-expense-subtitle');
+const cardSavingsSubtitle = document.getElementById('card-savings-subtitle');
+
 // DOM Elements: Form
 const form = document.getElementById('transaction-form');
 const textInput = document.getElementById('text');
@@ -592,81 +608,226 @@ function closeSidebar() {
 closeSidebarBtn.addEventListener('click', closeSidebar);
 overlay.addEventListener('click', closeSidebar);
 
+const MONTH_NAMES_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const MONTH_NAMES_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function selectMonthFilter(monthVal, yearVal) {
+    if (yearVal !== undefined && yearVal !== null) {
+        selectedYear = parseInt(yearVal);
+        calViewYear = selectedYear;
+    }
+
+    selectedDashboardDate = null; // Clear any day drill-down so whole month metrics show
+
+    if (monthVal === 'lifetime') {
+        selectedMonth = 'lifetime';
+    } else if (monthVal === 'all') {
+        selectedMonth = 'all';
+    } else {
+        selectedMonth = parseInt(monthVal);
+        calViewMonth = selectedMonth;
+    }
+
+    syncMonthUI();
+    updateValues();
+    renderHistoryDOM();
+    renderCalendar();
+}
+
+function syncMonthUI() {
+    const realNow = new Date();
+    const realMonth = realNow.getMonth();
+    const realYear = realNow.getFullYear();
+
+    // 1. Month Ribbon Buttons
+    const ribbonBtns = document.querySelectorAll('#month-ribbon .ribbon-month-btn');
+    ribbonBtns.forEach(btn => {
+        const m = btn.getAttribute('data-month');
+        btn.classList.remove('active');
+        btn.classList.remove('is-current');
+
+        if (m !== 'all') {
+            const mNum = parseInt(m);
+            if (mNum === realMonth && selectedYear === realYear) {
+                btn.classList.add('is-current');
+            }
+            if (selectedMonth === mNum) {
+                btn.classList.add('active');
+            }
+        } else {
+            if (selectedMonth === 'all') {
+                btn.classList.add('active');
+            }
+        }
+    });
+
+    // 2. Quick Pills
+    if (btnQuickThisMonth) {
+        btnQuickThisMonth.classList.toggle('active', selectedMonth === realMonth && selectedYear === realYear);
+    }
+    if (btnQuickEntireYear) {
+        btnQuickEntireYear.classList.toggle('active', selectedMonth === 'all');
+    }
+    if (btnQuickLifetime) {
+        btnQuickLifetime.classList.toggle('active', selectedMonth === 'lifetime');
+    }
+
+    // 3. Current Selection Label Badge
+    if (monthBarCurrentLabel) {
+        if (selectedMonth === 'lifetime') {
+            monthBarCurrentLabel.innerText = 'All Time (Lifetime)';
+        } else if (selectedMonth === 'all') {
+            monthBarCurrentLabel.innerText = `Entire Year ${selectedYear}`;
+        } else {
+            monthBarCurrentLabel.innerText = `${MONTH_NAMES_FULL[selectedMonth]} ${selectedYear}`;
+        }
+    }
+
+    // 4. Year Dropdown Sync
+    if (dashboardYearSelect && String(dashboardYearSelect.value) !== String(selectedYear)) {
+        dashboardYearSelect.value = selectedYear;
+    }
+    if (yearSelect && String(yearSelect.value) !== String(selectedYear)) {
+        yearSelect.value = selectedYear;
+    }
+
+    // 5. Sidebar Month List & Period Pills
+    if (periodLifetime) {
+        periodLifetime.classList.toggle('active', selectedMonth === 'lifetime');
+    }
+    if (periodEntireYear) {
+        periodEntireYear.classList.toggle('active', selectedMonth === 'all');
+    }
+    if (monthList) {
+        const sideItems = monthList.querySelectorAll('li');
+        sideItems.forEach(li => {
+            const m = li.getAttribute('data-month');
+            li.classList.remove('active');
+            if (m === 'all' && selectedMonth === 'all') {
+                li.classList.add('active');
+            } else if (m !== 'all' && parseInt(m) === selectedMonth) {
+                li.classList.add('active');
+            }
+        });
+    }
+}
+
 function renderYears() {
-    if (!yearSelect) return;
-    yearSelect.innerHTML = '';
     const currentY = new Date().getFullYear();
     const years = transactions.map(t => new Date(t.date || t.createdAt).getFullYear());
     const minYear = years.length > 0 ? Math.min(...years, currentY) : currentY;
 
-    for (let y = currentY; y >= minYear; y--) {
-        const opt = document.createElement('option');
-        opt.value = y;
-        opt.innerText = y;
-        if (y === selectedYear) opt.selected = true;
-        yearSelect.appendChild(opt);
+    const populateSelect = (selEl) => {
+        if (!selEl) return;
+        selEl.innerHTML = '';
+        for (let y = currentY; y >= minYear; y--) {
+            const opt = document.createElement('option');
+            opt.value = y;
+            opt.innerText = y;
+            if (y === selectedYear) opt.selected = true;
+            selEl.appendChild(opt);
+        }
+    };
+
+    populateSelect(yearSelect);
+    populateSelect(dashboardYearSelect);
+
+    if (yearSelect && !yearSelect.dataset.listenerAttached) {
+        yearSelect.dataset.listenerAttached = 'true';
+        yearSelect.addEventListener('change', (e) => {
+            selectMonthFilter(selectedMonth, parseInt(e.target.value));
+        });
     }
 
-    yearSelect.addEventListener('change', (e) => {
-        selectedYear = parseInt(e.target.value);
-        calViewYear = selectedYear;
-        updateValues();
-        renderHistoryDOM();
-    });
+    if (dashboardYearSelect && !dashboardYearSelect.dataset.listenerAttached) {
+        dashboardYearSelect.dataset.listenerAttached = 'true';
+        dashboardYearSelect.addEventListener('change', (e) => {
+            selectMonthFilter(selectedMonth, parseInt(e.target.value));
+        });
+    }
 }
 
 function initPeriodAndMonthSelection() {
+    // 1. Top Ribbon Month Buttons (Jan - Dec, All)
+    const ribbonBtns = document.querySelectorAll('#month-ribbon .ribbon-month-btn');
+    ribbonBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const val = btn.getAttribute('data-month');
+            selectMonthFilter(val, selectedYear);
+        });
+    });
+
+    // 2. Top Ribbon Prev / Next Month
+    if (monthRibbonPrev) {
+        monthRibbonPrev.addEventListener('click', () => {
+            let curM = (selectedMonth === 'lifetime' || selectedMonth === 'all') ? (calViewMonth || 0) : selectedMonth;
+            let targetY = selectedYear;
+            curM--;
+            if (curM < 0) {
+                curM = 11;
+                targetY--;
+                renderYears();
+            }
+            selectMonthFilter(curM, targetY);
+        });
+    }
+    if (monthRibbonNext) {
+        monthRibbonNext.addEventListener('click', () => {
+            let curM = (selectedMonth === 'lifetime' || selectedMonth === 'all') ? (calViewMonth || 0) : selectedMonth;
+            let targetY = selectedYear;
+            curM++;
+            if (curM > 11) {
+                curM = 0;
+                targetY++;
+                renderYears();
+            }
+            selectMonthFilter(curM, targetY);
+        });
+    }
+
+    // 3. Quick Pills (This Month, Entire Year, All Time)
+    if (btnQuickThisMonth) {
+        btnQuickThisMonth.addEventListener('click', () => {
+            const now = new Date();
+            selectMonthFilter(now.getMonth(), now.getFullYear());
+        });
+    }
+    if (btnQuickEntireYear) {
+        btnQuickEntireYear.addEventListener('click', () => {
+            selectMonthFilter('all', selectedYear);
+        });
+    }
+    if (btnQuickLifetime) {
+        btnQuickLifetime.addEventListener('click', () => {
+            selectMonthFilter('lifetime');
+        });
+    }
+
+    // 4. Sidebar Period & Month List
     if (periodLifetime) {
         periodLifetime.addEventListener('click', () => {
-            periodLifetime.classList.add('active');
-            periodEntireYear.classList.remove('active');
-            selectedMonth = 'lifetime';
-            clearMonthActiveUI();
-            updateValues();
-            renderHistoryDOM();
+            selectMonthFilter('lifetime');
         });
     }
 
     if (periodEntireYear) {
         periodEntireYear.addEventListener('click', () => {
-            periodEntireYear.classList.add('active');
-            periodLifetime.classList.remove('active');
-            selectedMonth = 'all';
-            clearMonthActiveUI();
-            const allItem = monthList.querySelector('li[data-month="all"]');
-            if (allItem) allItem.classList.add('active');
-            updateValues();
-            renderHistoryDOM();
+            selectMonthFilter('all', selectedYear);
         });
     }
 
-    const months = monthList.querySelectorAll('li');
-    months.forEach(li => {
-        li.addEventListener('click', (e) => {
-            clearMonthActiveUI();
-            li.classList.add('active');
-            const val = li.getAttribute('data-month');
-
-            periodLifetime.classList.remove('active');
-            periodEntireYear.classList.remove('active');
-
-            if (val === 'all') {
-                selectedMonth = 'all';
-                periodEntireYear.classList.add('active');
-            } else {
-                selectedMonth = parseInt(val);
-                calViewMonth = selectedMonth;
-            }
-
-            updateValues();
-            renderHistoryDOM();
+    if (monthList) {
+        const months = monthList.querySelectorAll('li');
+        months.forEach(li => {
+            li.addEventListener('click', () => {
+                const val = li.getAttribute('data-month');
+                selectMonthFilter(val, selectedYear);
+            });
         });
-    });
-}
+    }
 
-function clearMonthActiveUI() {
-    const months = monthList.querySelectorAll('li');
-    months.forEach(li => li.classList.remove('active'));
+    // Initial sync of UI states
+    syncMonthUI();
 }
 
 // Sidebar Transaction Type Filters
@@ -968,6 +1129,32 @@ function updateValues() {
 
     if (cardSubIncome) cardSubIncome.innerText = formatCurrency(income);
     if (cardSubExpense) cardSubExpense.innerText = formatCurrency(expense);
+
+    // Dynamic Card Subtitles reflecting the active month/period
+    let periodText = '';
+    if (selectedDashboardDate) {
+        const dObj = new Date(selectedDashboardDate + 'T00:00:00');
+        periodText = dObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    } else if (selectedMonth === 'lifetime') {
+        periodText = 'All-Time';
+    } else if (selectedMonth === 'all') {
+        periodText = `Year ${selectedYear}`;
+    } else {
+        periodText = `${MONTH_NAMES_SHORT[selectedMonth]} ${selectedYear}`;
+    }
+
+    if (cardBalanceSubtitle) {
+        cardBalanceSubtitle.innerHTML = `<i class="fa-solid fa-calendar-check"></i> Net for ${periodText}`;
+    }
+    if (cardIncomeSubtitle) {
+        cardIncomeSubtitle.innerHTML = `<i class="fa-solid fa-arrow-up"></i> Income in ${periodText}`;
+    }
+    if (cardExpenseSubtitle) {
+        cardExpenseSubtitle.innerHTML = `<i class="fa-solid fa-arrow-down"></i> Expenses in ${periodText}`;
+    }
+    if (cardSavingsSubtitle) {
+        cardSavingsSubtitle.innerHTML = `<i class="fa-solid fa-leaf"></i> Savings in ${periodText}`;
+    }
 
     // Savings Rate Percentage & Circular SVG Progress
     const savings = income - expense;
@@ -1583,8 +1770,9 @@ if (calPrevMonth) {
         if (calViewMonth < 0) {
             calViewMonth = 11;
             calViewYear--;
+            renderYears();
         }
-        renderCalendar();
+        selectMonthFilter(calViewMonth, calViewYear);
     });
 }
 if (calNextMonth) {
@@ -1593,8 +1781,9 @@ if (calNextMonth) {
         if (calViewMonth > 11) {
             calViewMonth = 0;
             calViewYear++;
+            renderYears();
         }
-        renderCalendar();
+        selectMonthFilter(calViewMonth, calViewYear);
     });
 }
 
