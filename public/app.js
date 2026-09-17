@@ -595,18 +595,20 @@ if (headerSearchInput) {
 // ===================================================
 // SIDEBAR & RECYCLE BIN CONTROLS
 // ===================================================
-toggleSidebarBtn.addEventListener('click', () => {
-    sidebar.classList.add('active');
-    overlay.classList.add('active');
-});
-
-function closeSidebar() {
-    sidebar.classList.remove('active');
-    overlay.classList.remove('active');
+if (toggleSidebarBtn) {
+    toggleSidebarBtn.addEventListener('click', () => {
+        if (sidebar) sidebar.classList.add('active');
+        if (overlay) overlay.classList.add('active');
+    });
 }
 
-closeSidebarBtn.addEventListener('click', closeSidebar);
-overlay.addEventListener('click', closeSidebar);
+function closeSidebar() {
+    if (sidebar) sidebar.classList.remove('active');
+    if (overlay) overlay.classList.remove('active');
+}
+
+if (closeSidebarBtn) closeSidebarBtn.addEventListener('click', closeSidebar);
+if (overlay) overlay.addEventListener('click', closeSidebar);
 
 const MONTH_NAMES_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const MONTH_NAMES_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -860,15 +862,19 @@ if (sidebarCategorySelect) {
 }
 
 // Recycle Bin UI
-openBinBtn.addEventListener('click', () => {
-    closeSidebar();
-    renderBin();
-    binModal.classList.add('active');
-});
+if (openBinBtn) {
+    openBinBtn.addEventListener('click', () => {
+        closeSidebar();
+        renderBin();
+        binModal.classList.add('active');
+    });
+}
 
-closeBinBtn.addEventListener('click', () => {
-    binModal.classList.remove('active');
-});
+if (closeBinBtn) {
+    closeBinBtn.addEventListener('click', () => {
+        binModal.classList.remove('active');
+    });
+}
 
 function renderBin() {
     binList.innerHTML = '';

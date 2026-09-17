@@ -22,9 +22,6 @@
         <!-- ================= TOP HEADER ================= -->
         <header class="app-header">
             <div class="header-left">
-                <button id="toggle-sidebar" class="menu-btn" title="Open Filter Sidebar" aria-label="Open Filter Sidebar">
-                    <i class="fa-solid fa-bars"></i>
-                </button>
                 <div class="brand-section">
                     <div class="brand-icon">
                         <i class="fa-solid fa-wallet"></i>
@@ -563,99 +560,6 @@
             </div>
         </section>
     </div>
-
-    <!-- ================= FILTER SIDEBAR ================= -->
-    <aside id="sidebar" class="sidebar" aria-label="Filter Sidebar">
-        <div class="sidebar-header">
-            <h2><i class="fa-solid fa-filter" style="color: var(--primary-purple);"></i> Filter</h2>
-            <button id="close-sidebar" class="close-btn" aria-label="Close Filter Sidebar">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
-        </div>
-        <div class="sidebar-content">
-            <!-- Year -->
-            <div class="filter-group">
-                <div class="filter-group-title">Year</div>
-                <select id="year-select" class="select-clean" style="padding: 6px 12px; font-size: 0.8rem;">
-                    <!-- JS Populated -->
-                </select>
-                <!-- Fallback UL for compatibility -->
-                <ul id="year-list" class="filter-list" style="display: none;"></ul>
-            </div>
-
-            <!-- Period -->
-            <div class="filter-group">
-                <div class="filter-group-title">Period</div>
-                <div class="sidebar-period-pills">
-                    <button type="button" class="sidebar-pill-btn active" id="period-lifetime">Lifetime</button>
-                    <button type="button" class="sidebar-pill-btn" id="period-entire-year">Entire Year</button>
-                </div>
-            </div>
-
-            <!-- Month Radio List -->
-            <div class="filter-group">
-                <div class="filter-group-title">Month</div>
-                <ul id="month-list" class="sidebar-month-list">
-                    <li data-month="all" class="sidebar-month-item">
-                        <span class="radio-circle-indicator"></span> All Months
-                    </li>
-                    <li data-month="0" class="sidebar-month-item"><span class="radio-circle-indicator"></span> January</li>
-                    <li data-month="1" class="sidebar-month-item"><span class="radio-circle-indicator"></span> February</li>
-                    <li data-month="2" class="sidebar-month-item"><span class="radio-circle-indicator"></span> March</li>
-                    <li data-month="3" class="sidebar-month-item"><span class="radio-circle-indicator"></span> April</li>
-                    <li data-month="4" class="sidebar-month-item"><span class="radio-circle-indicator"></span> May</li>
-                    <li data-month="5" class="sidebar-month-item"><span class="radio-circle-indicator"></span> June</li>
-                    <li data-month="6" class="sidebar-month-item"><span class="radio-circle-indicator"></span> July</li>
-                    <li data-month="7" class="sidebar-month-item"><span class="radio-circle-indicator"></span> August</li>
-                    <li data-month="8" class="sidebar-month-item"><span class="radio-circle-indicator"></span> September</li>
-                    <li data-month="9" class="sidebar-month-item"><span class="radio-circle-indicator"></span> October</li>
-                    <li data-month="10" class="sidebar-month-item"><span class="radio-circle-indicator"></span> November</li>
-                    <li data-month="11" class="sidebar-month-item"><span class="radio-circle-indicator"></span> December</li>
-                </ul>
-            </div>
-
-            <!-- Transaction Type -->
-            <div class="filter-group">
-                <div class="filter-group-title">Transaction Type</div>
-                <div class="sidebar-period-pills" style="grid-template-columns: repeat(3, 1fr);">
-                    <button type="button" class="sidebar-pill-btn active" id="side-type-all">All</button>
-                    <button type="button" class="sidebar-pill-btn" id="side-type-inc">Income</button>
-                    <button type="button" class="sidebar-pill-btn" id="side-type-exp">Expense</button>
-                </div>
-            </div>
-
-            <!-- Category -->
-            <div class="filter-group">
-                <div class="filter-group-title">Category</div>
-                <select id="sidebar-category-select" class="select-clean" style="padding: 6px 12px; font-size: 0.8rem;">
-                    <option value="">All Categories</option>
-                    <option value="Food">Food & Dining</option>
-                    <option value="Transport">Transportation</option>
-                    <option value="Shopping">Shopping</option>
-                    <option value="Bills">Bills & Utilities</option>
-                    <option value="Entertainment">Entertainment</option>
-                    <option value="Health">Health & Fitness</option>
-                    <option value="Investment">Investment</option>
-                    <option value="Salary">Salary/Income</option>
-                    <option value="General">General</option>
-                </select>
-            </div>
-
-            <button id="open-subs-sidebar-btn" class="sidebar-bin-btn" style="margin-bottom: 8px;">
-                <i class="fa-solid fa-repeat"></i> Manage Subscriptions
-            </button>
-
-            <button id="open-bin-btn" class="sidebar-bin-btn">
-                <i class="fa-solid fa-trash-can"></i> View Deleted Transactions
-            </button>
-
-            <div class="sidebar-slogan-box">
-                Better Money<br>Brighter Tomorrow
-            </div>
-        </div>
-    </aside>
-
-    <div class="overlay" id="overlay"></div>
 
     <!-- ================= RECYCLE BIN MODAL ================= -->
     <div class="modal-overlay" id="bin-modal">
