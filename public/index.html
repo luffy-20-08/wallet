@@ -24,7 +24,8 @@
 </head>
 
 <body>
-    <!-- Auth Verification -->
+    <!-- App Configuration & Auth Verification -->
+    <script src="js/config.js"></script>
     <script src="js/auth.js"></script>
     <script>checkAuth();</script>
 
@@ -531,6 +532,10 @@
                         <option value="lowest">Lowest Amount</option>
                     </select>
 
+                    <button type="button" id="history-export-btn" class="btn-export-purple" title="Export Transactions" aria-haspopup="dialog">
+                        <i class="fa-solid fa-arrow-up-from-bracket"></i> Export
+                    </button>
+
                     <button id="delete-all-btn" class="btn-danger-outline" title="Delete All Active Transactions">
                         <i class="fa-solid fa-trash-can"></i> Delete All
                     </button>
@@ -1031,11 +1036,277 @@
         </div>
     </div>
 
+    <!-- ================= EXPORT TRANSACTIONS MODAL ================= -->
+    <div class="modal-overlay" id="export-modal" role="dialog" aria-modal="true" aria-labelledby="export-modal-title">
+        <div class="modal-container export-modal-container">
+            <div class="modal-header">
+                <h2 id="export-modal-title">
+                    <i class="fa-solid fa-arrow-up-from-bracket" style="color: var(--primary-purple);"></i>
+                    Export Transactions
+                </h2>
+                <button class="close-modal-btn" id="close-export-btn" aria-label="Close Export Modal">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="modal-body export-modal-body">
+                <!-- Alert box for empty data or error -->
+                <div id="export-alert-box" class="alert-clean-danger" style="display: none; margin-bottom: 14px;" role="alert">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <span id="export-alert-text"></span>
+                    <button type="button" id="close-export-alert-btn" class="alert-dismiss-btn" aria-label="Dismiss message">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <!-- Scope Selection: Current Filters vs All Transactions -->
+                <div class="export-scope-section">
+                    <div class="export-scope-toggle">
+                        <button type="button" class="export-scope-btn active" id="export-scope-filtered" data-scope="filtered">
+                            <i class="fa-solid fa-filter"></i> Current Filters
+                        </button>
+                        <button type="button" class="export-scope-btn" id="export-scope-all" data-scope="all">
+                            <i class="fa-solid fa-database"></i> All Transactions
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Active Filter Context Summary Card -->
+                <div class="export-context-card" id="export-context-card">
+                    <div class="export-context-header">
+                        <span class="export-context-title">Target Dataset</span>
+                        <span class="export-count-badge" id="export-target-count">0 transactions</span>
+                    </div>
+                    <div class="export-context-details" id="export-context-details">
+                        <!-- Dynamic filter chips inserted here -->
+                    </div>
+                </div>
+
+                <!-- Export Format Grid -->
+                <div class="export-formats-label">Choose Export Format:</div>
+                <div class="export-formats-grid">
+                    <!-- CSV Option -->
+                    <button type="button" class="export-format-card" id="btn-export-csv" data-format="csv">
+                        <div class="export-format-icon-wrap icon-csv">
+                            <i class="fa-solid fa-file-csv"></i>
+                        </div>
+                        <div class="export-format-text">
+                            <div class="export-format-title">CSV <span class="export-ext">.csv</span></div>
+                            <div class="export-format-desc">Raw tabular data compatible with any spreadsheet software</div>
+                        </div>
+                        <i class="fa-solid fa-download export-download-arrow"></i>
+                    </button>
+
+                    <!-- Excel Option -->
+                    <button type="button" class="export-format-card" id="btn-export-excel" data-format="excel">
+                        <div class="export-format-icon-wrap icon-excel">
+                            <i class="fa-solid fa-file-excel"></i>
+                        </div>
+                        <div class="export-format-text">
+                            <div class="export-format-title">Excel <span class="export-ext">.xlsx</span></div>
+                            <div class="export-format-desc">Formatted worksheet with summary cards, metrics & frozen header</div>
+                        </div>
+                        <i class="fa-solid fa-download export-download-arrow"></i>
+                    </button>
+
+                    <!-- PDF Option -->
+                    <button type="button" class="export-format-card" id="btn-export-pdf" data-format="pdf">
+                        <div class="export-format-icon-wrap icon-pdf">
+                            <i class="fa-solid fa-file-pdf"></i>
+                        </div>
+                        <div class="export-format-text">
+                            <div class="export-format-title">PDF <span class="export-ext">.pdf</span></div>
+                            <div class="export-format-desc">Executive financial statement styled in Wallet dark theme</div>
+                        </div>
+                        <i class="fa-solid fa-download export-download-arrow"></i>
+                    </button>
+                </div>
+
+                <!-- Export All Quick Action Footer -->
+                <div class="export-footer-action">
+                    <button type="button" id="btn-quick-export-all" class="btn-export-all-wide" title="Export all lifetime transactions regardless of filters">
+                        <i class="fa-solid fa-database"></i>
+                        <span>Export All Transactions</span>
+                    </button>
+                </div>
+
+                <!-- Loading State Overlay -->
+                <div id="export-loading-overlay" class="export-loading-overlay" style="display: none;">
+                    <div class="export-spinner-glow"></div>
+                    <div class="export-loading-title" id="export-loading-status">Preparing export...</div>
+                    <div class="export-loading-subtitle">Generating your financial export file</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= IMPORT PAYMENT MODAL (PHONEPE / SHARE INTENT) ================= -->
+    <div class="modal-overlay" id="import-payment-modal" role="dialog" aria-modal="true" aria-labelledby="import-payment-title">
+        <div class="modal-container import-modal-container">
+            <div class="modal-header">
+                <div class="import-header-left">
+                    <span class="import-badge-source" id="import-badge-source">
+                        <i class="fa-solid fa-bolt" style="color: var(--primary-purple);"></i> Shared Payment
+                    </span>
+                    <h2 id="import-payment-title">Import Payment</h2>
+                </div>
+                <button class="close-modal-btn" id="close-import-btn" aria-label="Close Import Modal">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="modal-body import-modal-body">
+                <!-- Duplicate warning banner -->
+                <div id="import-duplicate-alert" class="alert-clean-warning" style="display: none; margin-bottom: 14px;" role="alert">
+                    <div class="alert-icon-box">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                    </div>
+                    <div class="alert-text-content">
+                        <strong>Possible duplicate transaction</strong>
+                        <p id="import-duplicate-desc">A matching transaction was found in your records.</p>
+                    </div>
+                </div>
+
+                <!-- Screenshot Preview (if image was shared) -->
+                <div id="import-screenshot-preview-wrap" class="import-screenshot-wrap" style="display: none;">
+                    <div class="screenshot-header">
+                        <span class="screenshot-title"><i class="fa-regular fa-image"></i> Payment Screenshot</span>
+                        <button type="button" class="btn-toggle-screenshot" id="btn-toggle-screenshot">Hide Preview</button>
+                    </div>
+                    <div class="screenshot-img-container" id="screenshot-img-container">
+                        <img id="import-screenshot-img" src="" alt="Payment Screenshot Receipt" />
+                    </div>
+                </div>
+
+                <!-- Extracted Raw Text Collapsible (Useful for verification) -->
+                <div id="import-raw-text-wrap" class="import-raw-wrap" style="display: none;">
+                    <div class="import-raw-header" id="import-raw-toggle">
+                        <span><i class="fa-solid fa-receipt"></i> Extracted Receipt Text</span>
+                        <i class="fa-solid fa-chevron-down" id="import-raw-chevron"></i>
+                    </div>
+                    <pre id="import-raw-text" class="import-raw-content" style="display: none;"></pre>
+                </div>
+
+                <!-- Editable Form for Import Payment -->
+                <form id="import-payment-form" autocomplete="off">
+                    <!-- Temporary visible debug line (Requirement 7) -->
+                    <div id="import-debug-line" style="font-size: 0.85rem; color: #a78bfa; font-weight: 600; margin-bottom: 12px; padding: 6px 10px; background: rgba(167, 139, 250, 0.12); border-radius: 6px; border: 1px dashed rgba(167, 139, 250, 0.4); display: flex; align-items: center; gap: 6px;">
+                        <i class="fa-solid fa-magnifying-glass-dollar"></i>
+                        <span>Detected amount: <strong id="import-debug-detected-amount" style="color: #38bdf8;">--</strong></span>
+                    </div>
+
+                    <!-- Amount & Type Row -->
+                    <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px; margin-bottom: 12px;">
+                        <div class="form-group-clean">
+                            <label for="import-amount" class="form-label-clean">
+                                Amount *
+                                <span id="import-amount-hint" style="color: #F87171; font-size: 0.75rem; margin-left: 6px; display: none;">
+                                    <i class="fa-solid fa-circle-exclamation"></i> Please enter amount
+                                </span>
+                            </label>
+                            <div class="amount-input-wrap">
+                                <span class="amount-prefix">₹</span>
+                                <input type="number" id="import-amount" class="input-clean" placeholder="0.00" required min="0.01" step="0.01" />
+                            </div>
+                        </div>
+
+                        <div class="form-group-clean">
+                            <label class="form-label-clean">Type</label>
+                            <div class="type-segmented-control" style="margin-top: 2px;">
+                                <label class="type-segment-btn type-expense active" id="import-type-expense-btn">
+                                    <input type="radio" name="importType" value="expense" checked>
+                                    <i class="fa-solid fa-minus"></i> Expense
+                                </label>
+                                <label class="type-segment-btn type-income" id="import-type-income-btn">
+                                    <input type="radio" name="importType" value="income">
+                                    <i class="fa-solid fa-plus"></i> Income
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Merchant / Payee -->
+                    <div class="form-group-clean" style="margin-bottom: 12px;">
+                        <label for="import-merchant" class="form-label-clean">Merchant / Description *</label>
+                        <input type="text" id="import-merchant" class="input-clean" placeholder="e.g. Swiggy, Uber, Rent..." required />
+                    </div>
+
+                    <!-- Category Selection (Highlight or Required Warning) -->
+                    <div class="form-group-clean" style="margin-bottom: 12px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                            <label for="import-category" class="form-label-clean" style="margin-bottom: 0;">
+                                Category *
+                            </label>
+                            <span id="import-category-status" class="category-status-pill">
+                                <!-- Populated dynamically: Detected vs Please Select -->
+                            </span>
+                        </div>
+                        <select id="import-category" class="select-clean" required>
+                            <option value="">-- Select Category --</option>
+                            <option value="Food">Food & Dining</option>
+                            <option value="Transport">Transportation</option>
+                            <option value="Shopping">Shopping</option>
+                            <option value="Bills">Bills & Utilities</option>
+                            <option value="Entertainment">Entertainment</option>
+                            <option value="Health">Health & Fitness</option>
+                            <option value="Investment">Investment</option>
+                            <option value="Salary">Salary/Income</option>
+                            <option value="General">General</option>
+                        </select>
+                        <small id="import-category-tip" class="category-tip-text" style="display: none;">
+                            <i class="fa-solid fa-circle-exclamation"></i> Please select a category before saving
+                        </small>
+                    </div>
+
+                    <!-- Date & Time Row -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                        <div class="form-group-clean">
+                            <label for="import-date" class="form-label-clean">Date *</label>
+                            <input type="date" id="import-date" class="input-clean" required />
+                        </div>
+                        <div class="form-group-clean">
+                            <label for="import-time" class="form-label-clean">Time</label>
+                            <input type="text" id="import-time" class="input-clean" placeholder="e.g. 10:30 AM" />
+                        </div>
+                    </div>
+
+                    <!-- Payment Method & Reference ID (UTR) -->
+                    <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 12px; margin-bottom: 14px;">
+                        <div class="form-group-clean">
+                            <label for="import-method" class="form-label-clean">Payment Method</label>
+                            <input type="text" id="import-method" class="input-clean" placeholder="UPI" value="PhonePe UPI" />
+                        </div>
+                        <div class="form-group-clean">
+                            <label for="import-ref" class="form-label-clean">UPI Ref / UTR</label>
+                            <input type="text" id="import-ref" class="input-clean" placeholder="e.g. 425612345678" />
+                        </div>
+                    </div>
+
+                    <!-- Note / Remarks -->
+                    <div class="form-group-clean" style="margin-bottom: 18px;">
+                        <label for="import-note" class="form-label-clean">Note / Remarks (Optional)</label>
+                        <input type="text" id="import-note" class="input-clean" placeholder="e.g. Dinner with team" />
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="import-modal-actions">
+                        <button type="button" class="btn-cancel-clean" id="btn-cancel-import">
+                            Cancel
+                        </button>
+                        <button type="submit" class="btn-primary-purple" id="btn-save-import">
+                            <i class="fa-solid fa-check"></i> Import & Save
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Dynamic Toast Notification Container -->
     <div id="toast-container" class="toast-container" aria-live="polite"></div>
 
     <!-- Chart.js and App Logic -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="js/paymentParser.js"></script>
     <script src="app.js"></script>
 </body>
 

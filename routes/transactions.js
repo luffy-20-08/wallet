@@ -3,6 +3,89 @@ const router = express.Router();
 
 const Transaction = require('../models/Transaction');
 const { protect } = require('../middleware/authMiddleware');
+const {
+    generateCSV,
+    generateExcel,
+    generatePDF,
+    getExportFileName,
+    buildExportQuery
+} = require('../utils/exportService');
+
+/**
+ * Common Export Handler for CSV, Excel, and PDF
+ * Enforces authenticated user data isolation and query filtering
+ */
+async function handleExport(format, req, res) {
+    try {
+        const { query, sort } = buildExportQuery(req.user.id, req.query);
+        const transactions = await Transaction.find(query).sort(sort);
+
+        // Requirement 10: If no transactions matching filters, show user-friendly message
+        if (!transactions || transactions.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'No transactions found for the selected filters.',
+                count: 0
+            });
+        }
+
+        const fileName = getExportFileName(format, req.query);
+
+        if (format === 'csv') {
+            const csvData = generateCSV(transactions);
+            res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+            res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+            res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
+            return res.status(200).send(csvData);
+        } else if (format === 'excel' || format === 'xlsx') {
+            const xlsxBuffer = await generateExcel(transactions, req.query);
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+            res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
+            return res.status(200).send(xlsxBuffer);
+        } else if (format === 'pdf') {
+            const pdfBuffer = await generatePDF(transactions, req.query);
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+            res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
+            return res.status(200).send(pdfBuffer);
+        } else {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid export format. Supported formats: csv, excel, pdf.'
+            });
+        }
+    } catch (err) {
+        console.error(`Export ${format} error:`, err);
+        return res.status(500).json({
+            success: false,
+            error: 'Unable to export transactions. Please try again.'
+        });
+    }
+}
+
+// @desc    Export transactions as CSV
+// @route   GET /api/transactions/export/csv
+// @access  Private
+router.get('/export/csv', protect, (req, res) => handleExport('csv', req, res));
+
+// @desc    Export transactions as Excel (.xlsx)
+// @route   GET /api/transactions/export/excel
+// @access  Private
+router.get('/export/excel', protect, (req, res) => handleExport('excel', req, res));
+
+// @desc    Export transactions as PDF
+// @route   GET /api/transactions/export/pdf
+// @access  Private
+router.get('/export/pdf', protect, (req, res) => handleExport('pdf', req, res));
+
+// @desc    Export transactions (generic endpoint with ?format=csv|excel|pdf)
+// @route   GET /api/transactions/export
+// @access  Private
+router.get('/export', protect, (req, res) => {
+    const fmt = (req.query.format || 'csv').toLowerCase();
+    return handleExport(fmt, req, res);
+});
 
 
 // @desc    Get all transactions (active)
@@ -75,23 +158,109 @@ router.get('/bin', protect, async (req, res) => {
     }
 });
 
+// @desc    Check potential duplicate transaction
+// @route   GET /api/transactions/check-duplicate
+// @access  Private
+router.get('/check-duplicate', protect, async (req, res) => {
+    try {
+        const { referenceId, amount, date, text } = req.query;
+        let duplicate = null;
+
+        // 1. Check exact referenceId / UTR if provided
+        if (referenceId && referenceId.trim()) {
+            duplicate = await Transaction.findOne({
+                user: req.user.id,
+                isDeleted: false,
+                referenceId: referenceId.trim()
+            });
+        }
+
+        // 2. Check same amount and matching date & similar description
+        if (!duplicate && amount && date) {
+            const numAmount = parseFloat(amount);
+            const targetDate = new Date(date);
+            if (!isNaN(numAmount) && !isNaN(targetDate.getTime())) {
+                const startOfDay = new Date(targetDate);
+                startOfDay.setHours(0, 0, 0, 0);
+                const endOfDay = new Date(targetDate);
+                endOfDay.setHours(23, 59, 59, 999);
+
+                const candidates = await Transaction.find({
+                    user: req.user.id,
+                    isDeleted: false,
+                    amount: { $in: [numAmount, -Math.abs(numAmount), Math.abs(numAmount)] },
+                    date: { $gte: startOfDay, $lte: endOfDay }
+                });
+
+                if (candidates && candidates.length > 0) {
+                    if (text && text.trim()) {
+                        const cleanT = text.toLowerCase().trim();
+                        duplicate = candidates.find(c => c.text && c.text.toLowerCase().includes(cleanT.substring(0, 10))) || candidates[0];
+                    } else {
+                        duplicate = candidates[0];
+                    }
+                }
+            }
+        }
+
+        return res.status(200).json({
+            success: true,
+            isDuplicate: !!duplicate,
+            transaction: duplicate || null
+        });
+    } catch (err) {
+        return res.status(500).json({
+            success: false,
+            error: 'Server Error'
+        });
+    }
+});
+
 // @desc    Add transaction
 // @route   POST /api/transactions
 // @access  Private
 router.post('/', protect, async (req, res) => {
     try {
-        const { text, amount, type, category, date, month, year } = req.body;
+        const {
+            text,
+            amount,
+            type,
+            category,
+            date,
+            month,
+            year,
+            referenceId,
+            paymentScreenshot,
+            paymentMethod
+        } = req.body;
 
         console.log("Incoming POST /transactions:");
-        console.log("Req Body Date:", date);
-        console.log("Req Body Month:", month, "Year:", year);
+        console.log("Req Body Text:", text, "Amount:", amount, "Ref:", referenceId);
+        console.log("Req Body Date:", date, "Month:", month, "Year:", year);
+
+        // Check for duplicate UTR / Reference ID if provided
+        if (referenceId && typeof referenceId === 'string' && referenceId.trim()) {
+            const existing = await Transaction.findOne({
+                user: req.user.id,
+                isDeleted: false,
+                referenceId: referenceId.trim()
+            });
+            if (existing) {
+                console.log(`[Duplicate Prevention] UTR ${referenceId.trim()} already exists for user ${req.user.id}`);
+                return res.status(409).json({
+                    success: false,
+                    isDuplicate: true,
+                    error: `This payment (UTR: ${referenceId.trim()}) is already recorded in your Wallet.`
+                });
+            }
+        }
 
         // Validating and Parsing Date
         const parsedDate = new Date(date);
         if (isNaN(parsedDate.getTime())) {
             return res.status(400).json({
                 success: false,
-                error: ['Invalid Date']
+                error: 'Invalid Date'
             });
         }
 
@@ -103,6 +272,9 @@ router.post('/', protect, async (req, res) => {
             date: parsedDate,
             month: month !== undefined ? month : parsedDate.getMonth(),
             year: year !== undefined ? year : parsedDate.getFullYear(),
+            referenceId: referenceId || null,
+            paymentScreenshot: paymentScreenshot || null,
+            paymentMethod: paymentMethod || 'UPI',
             user: req.user.id
         });
 
@@ -111,17 +283,18 @@ router.post('/', protect, async (req, res) => {
             data: transaction
         });
     } catch (err) {
+        console.error("Error in POST /api/transactions:", err);
         if (err.name === 'ValidationError') {
             const messages = Object.values(err.errors).map(val => val.message);
 
             return res.status(400).json({
                 success: false,
-                error: messages
+                error: messages.join(', ')
             });
         } else {
             return res.status(500).json({
                 success: false,
-                error: 'Server Error'
+                error: err.message || 'Server Error'
             });
         }
     }

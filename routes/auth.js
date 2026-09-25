@@ -12,7 +12,7 @@ const Session = require('../models/Session');
 const { protect } = require('../middleware/authMiddleware');
 const { parseUserAgent, getClientIp, formatRelativeTime } = require('../utils/sessionHelper');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'wallet_app_jwt_secret_key_super_secure_2026';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // Helper to create a new session and corresponding JWT token
 const createSessionAndToken = async (userId, req) => {

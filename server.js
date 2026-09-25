@@ -17,24 +17,36 @@ const path = require('path');
 const app = express();
 
 // Middleware
-app.use(express.json());
-app.use(cors());
+app.use(express.json({ limit: '20mb' }));
+app.use(express.urlencoded({ extended: true, limit: '20mb' }));
+
+// CORS configuration supporting mobile Capacitor clients & web
+app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
+}));
+app.options('*', cors());
 
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
 
 // DB Config
-// Safeguard: In local development, never default to production 'wallet' database
-const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
-const defaultDevDb = 'mongodb+srv://luffywallet:luffyandhimanshu@wallet.nuv4bmz.mongodb.net/wallet-dev?appName=wallet';
-const defaultProdDb = 'mongodb+srv://luffywallet:luffyandhimanshu@wallet.nuv4bmz.mongodb.net/wallet?appName=wallet';
+// MONGO_URI must be provided via environment variables (.env locally, Vercel Dashboard in production)
+const rawMongoUri = process.env.MONGO_URI;
+const dbUri = (rawMongoUri || '').trim();
 
-const db = process.env.MONGO_URI || (isProduction ? defaultProdDb : defaultDevDb);
+if (!dbUri) {
+    console.error('[Configuration Error] FATAL: MONGO_URI environment variable is missing or empty.');
+}
 
 // Connect to Mongo (cached for serverless)
 const connectDB = async () => {
     if (mongoose.connection.readyState >= 1) return;
-    await mongoose.connect(db);
+    if (!dbUri) {
+        throw new Error('MONGO_URI environment variable is missing. Configure MONGO_URI in your environment or .env file.');
+    }
+    await mongoose.connect(dbUri);
     const dbName = mongoose.connection.name;
     if (dbName === 'wallet-dev') {
         console.log(`[Database] Connected to DEVELOPMENT database: "${dbName}" (Production "wallet" database is protected)`);
@@ -63,9 +75,14 @@ app.use('/api/auth', auth);
 app.use('/api/subscriptions', subscriptions);
 
 const port = process.env.PORT || 8000;
+const host = process.env.HOST || '0.0.0.0';
 
 if (require.main === module) {
-    app.listen(port, () => console.log(`Server started on port ${port}`));
+    app.listen(port, host, () => {
+        console.log(`Server started on port ${port} (listening on ${host})`);
+        console.log(`Local Access: http://localhost:${port}`);
+        console.log(`LAN/Mobile Access: http://10.246.23.55:${port}`);
+    });
 }
 
 module.exports = app;

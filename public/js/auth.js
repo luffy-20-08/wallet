@@ -1,8 +1,25 @@
-const API_AUTH_URL = '/api/auth';
+function getAuthApiUrl(endpoint) {
+    if (typeof window !== 'undefined' && typeof window.apiUrl === 'function') {
+        return window.apiUrl(`/api/auth${endpoint}`);
+    }
+    return `/api/auth${endpoint}`;
+}
+
+async function parseResponseSafely(res) {
+    const contentType = res.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+        return await res.json();
+    }
+    const rawText = await res.text();
+    if (rawText.trim().startsWith('<')) {
+        throw new Error(`Cannot reach backend API (status ${res.status}). Please ensure backend is running at ${window.APP_CONFIG ? window.APP_CONFIG.getApiBaseUrl() : 'configured URL'}`);
+    }
+    throw new Error(rawText || `Request failed with status ${res.status}`);
+}
 
 // Register User
 async function registerUser(username, email, password) {
-    const res = await fetch(`${API_AUTH_URL}/register`, {
+    const res = await fetch(getAuthApiUrl('/register'), {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -10,7 +27,7 @@ async function registerUser(username, email, password) {
         body: JSON.stringify({ username, email, password })
     });
 
-    const data = await res.json();
+    const data = await parseResponseSafely(res);
 
     if (data.success) {
         localStorage.setItem('token', data.token);
@@ -23,7 +40,7 @@ async function registerUser(username, email, password) {
 
 // Login User
 async function loginUser(email, password) {
-    const res = await fetch(`${API_AUTH_URL}/login`, {
+    const res = await fetch(getAuthApiUrl('/login'), {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -31,7 +48,7 @@ async function loginUser(email, password) {
         body: JSON.stringify({ email, password })
     });
 
-    const data = await res.json();
+    const data = await parseResponseSafely(res);
 
     if (data.success) {
         localStorage.setItem('token', data.token);
@@ -47,7 +64,7 @@ async function logout() {
     const token = localStorage.getItem('token');
     if (token) {
         try {
-            await fetch(`${API_AUTH_URL}/logout`, {
+            await fetch(getAuthApiUrl('/logout'), {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`
@@ -66,6 +83,11 @@ async function logout() {
 function checkAuth() {
     const token = localStorage.getItem('token');
     if (!token) {
+        if (typeof window !== 'undefined' && window.__pendingShareIntent) {
+            try {
+                localStorage.setItem('pending_share_payload', JSON.stringify(window.__pendingShareIntent));
+            } catch (e) {}
+        }
         window.location.href = 'login.html';
     }
 }

@@ -1,3 +1,25 @@
-node_modules
+# Environment files & Secrets
 .env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+
+# Local IDE / Cache files
+.idea/
+*.iml
+.vscode/
+android/.idea/
+
+# Android & Gradle Build Artifacts
+android/.gradle/
+android/app/build/
+.gradle/
+build/
+*.apk
+*.aab
+local.properties
+
+# Scratch & Temporary
 scratch/

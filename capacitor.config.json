@@ -1,0 +1,9 @@
+{
+  "appId": "com.wallet.tracker",
+  "appName": "Wallet",
+  "webDir": "public",
+  "server": {
+    "androidScheme": "http",
+    "cleartext": true
+  }
+}

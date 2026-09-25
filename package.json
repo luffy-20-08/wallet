@@ -5,15 +5,24 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "build": "npx cap copy",
+    "cap:sync": "npx cap sync",
+    "cap:copy": "npx cap copy",
+    "android": "npx cap open android"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^16.0.3",
+    "exceljs": "^4.4.0",
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.3",
-    "mongoose": "^7.0.3"
+    "mongoose": "^7.0.3",
+    "pdfkit": "^0.20.2"
   },
   "devDependencies": {
     "nodemon": "^2.0.22"

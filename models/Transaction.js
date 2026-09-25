@@ -36,6 +36,18 @@ const TransactionSchema = new mongoose.Schema({
     },
     year: {
         type: Number
+    },
+    referenceId: {
+        type: String,
+        default: null
+    },
+    paymentScreenshot: {
+        type: String,
+        default: null
+    },
+    paymentMethod: {
+        type: String,
+        default: 'UPI'
     }
 });
 

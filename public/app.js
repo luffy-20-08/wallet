@@ -148,7 +148,9 @@ let chartTimeRange = '1Y'; // '7D', '1M', '3M', '6M', '1Y', 'ALL'
 let incomeExpenseChart = null;
 let expenseChart = null;
 
-const API_URL = '/api/transactions';
+const API_URL = (typeof window !== 'undefined' && typeof window.apiUrl === 'function')
+    ? window.apiUrl('/api/transactions')
+    : '/api/transactions';
 
 // Category Definitions with Icons and Harmonious Colors
 const CATEGORY_MAP = {
@@ -373,7 +375,7 @@ if (changePasswordForm) {
         }
 
         try {
-            const res = await fetch('/api/auth/change-password', {
+            const res = await fetch((typeof window !== 'undefined' && typeof window.apiUrl === 'function') ? window.apiUrl('/api/auth/change-password') : '/api/auth/change-password', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -426,7 +428,7 @@ async function loadActiveSessions() {
     if (!token) return;
 
     try {
-        const res = await fetch('/api/auth/sessions', {
+        const res = await fetch((typeof window !== 'undefined' && typeof window.apiUrl === 'function') ? window.apiUrl('/api/auth/sessions') : '/api/auth/sessions', {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
@@ -509,7 +511,7 @@ async function logoutDevice(sessionId) {
     if (!token || !sessionId) return;
 
     try {
-        const res = await fetch(`/api/auth/sessions/${sessionId}`, {
+        const res = await fetch((typeof window !== 'undefined' && typeof window.apiUrl === 'function') ? window.apiUrl(`/api/auth/sessions/${sessionId}`) : `/api/auth/sessions/${sessionId}`, {
             method: 'DELETE',
             headers: {
                 'Authorization': `Bearer ${token}`
@@ -536,7 +538,7 @@ if (logoutAllOtherBtn) {
         logoutAllOtherBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Logging out devices...';
 
         try {
-            const res = await fetch('/api/auth/sessions/logout-all-other', {
+            const res = await fetch((typeof window !== 'undefined' && typeof window.apiUrl === 'function') ? window.apiUrl('/api/auth/sessions/logout-all-other') : '/api/auth/sessions/logout-all-other', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`
@@ -1999,7 +2001,9 @@ function initChartTimeSelectors() {
 // ===================================================
 // SUBSCRIPTIONS & RECURRING DEDUCTIONS ENGINE
 // ===================================================
-const SUBS_API_URL = '/api/subscriptions';
+const SUBS_API_URL = (typeof window !== 'undefined' && typeof window.apiUrl === 'function')
+    ? window.apiUrl('/api/subscriptions')
+    : '/api/subscriptions';
 
 // DOM Elements: Subscriptions Summary Card & Triggers
 const cardOpenSubscriptions = document.getElementById('card-open-subscriptions');
@@ -2921,6 +2925,823 @@ function initSubscriptionsUI() {
     }
 }
 
+// ===================================================
+// EXPORT TRANSACTIONS CONTROLLER
+// ===================================================
+let activeExportScope = 'filtered'; // 'filtered' or 'all'
+
+const historyExportBtn = document.getElementById('history-export-btn');
+const exportModal = document.getElementById('export-modal');
+const closeExportBtn = document.getElementById('close-export-btn');
+const exportAlertBox = document.getElementById('export-alert-box');
+const exportAlertText = document.getElementById('export-alert-text');
+const closeExportAlertBtn = document.getElementById('close-export-alert-btn');
+const exportScopeFiltered = document.getElementById('export-scope-filtered');
+const exportScopeAll = document.getElementById('export-scope-all');
+const exportTargetCount = document.getElementById('export-target-count');
+const exportContextDetails = document.getElementById('export-context-details');
+const btnExportCSV = document.getElementById('btn-export-csv');
+const btnExportExcel = document.getElementById('btn-export-excel');
+const btnExportPDF = document.getElementById('btn-export-pdf');
+const btnQuickExportAll = document.getElementById('btn-quick-export-all');
+const exportLoadingOverlay = document.getElementById('export-loading-overlay');
+const exportLoadingStatus = document.getElementById('export-loading-status');
+
+function openExportModal() {
+    if (!exportModal) return;
+    hideExportAlert();
+    setExportScope('filtered');
+    updateExportContextUI();
+    exportModal.classList.add('active');
+}
+
+function closeExportModal() {
+    if (!exportModal) return;
+    exportModal.classList.remove('active');
+    hideExportLoading();
+    hideExportAlert();
+}
+
+function showExportAlert(msg) {
+    if (!exportAlertBox || !exportAlertText) return;
+    exportAlertText.textContent = msg;
+    exportAlertBox.style.display = 'flex';
+}
+
+function hideExportAlert() {
+    if (exportAlertBox) {
+        exportAlertBox.style.display = 'none';
+    }
+}
+
+function showExportLoading(msg = 'Preparing export...') {
+    if (!exportLoadingOverlay) return;
+    if (exportLoadingStatus) exportLoadingStatus.textContent = msg;
+    exportLoadingOverlay.style.display = 'flex';
+}
+
+function hideExportLoading() {
+    if (exportLoadingOverlay) {
+        exportLoadingOverlay.style.display = 'none';
+    }
+}
+
+function setExportScope(scope) {
+    activeExportScope = scope;
+    if (exportScopeFiltered) exportScopeFiltered.classList.toggle('active', scope === 'filtered');
+    if (exportScopeAll) exportScopeAll.classList.toggle('active', scope === 'all');
+    updateExportContextUI();
+}
+
+function updateExportContextUI() {
+    if (!exportContextDetails || !exportTargetCount) return;
+
+    if (activeExportScope === 'all') {
+        const activeAll = transactions.filter(t => !t.isDeleted);
+        exportTargetCount.textContent = `${activeAll.length} transaction${activeAll.length === 1 ? '' : 's'}`;
+        exportContextDetails.innerHTML = `
+            <span class="export-filter-chip"><i class="fa-solid fa-infinity"></i> All Time (Lifetime)</span>
+            <span class="export-filter-chip"><i class="fa-solid fa-layer-group"></i> All Categories & Types</span>
+        `;
+        return;
+    }
+
+    // Filtered Scope: calculate filtered count and chips matching history table
+    let listData = getFilteredTransactions();
+
+    if (historySearchTerm) {
+        listData = listData.filter(t =>
+            (t.text && t.text.toLowerCase().includes(historySearchTerm)) ||
+            (t.category && t.category.toLowerCase().includes(historySearchTerm))
+        );
+    }
+    if (sidebarCategoryFilter) {
+        listData = listData.filter(t => (t.category || '').toLowerCase() === sidebarCategoryFilter);
+    }
+    if (historyTypeFilter === 'income') {
+        listData = listData.filter(t => t.amount > 0);
+    } else if (historyTypeFilter === 'expense') {
+        listData = listData.filter(t => t.amount < 0);
+    }
+
+    exportTargetCount.textContent = `${listData.length} transaction${listData.length === 1 ? '' : 's'}`;
+
+    // Generate chips
+    let chipsHtml = '';
+
+    // Period chip
+    if (selectedDashboardDate) {
+        chipsHtml += `<span class="export-filter-chip"><i class="fa-regular fa-calendar-day"></i> ${selectedDashboardDate}</span>`;
+    } else if (selectedMonth === 'lifetime') {
+        chipsHtml += `<span class="export-filter-chip"><i class="fa-solid fa-infinity"></i> All Time</span>`;
+    } else if (selectedMonth === 'all') {
+        chipsHtml += `<span class="export-filter-chip"><i class="fa-regular fa-calendar"></i> Year ${selectedYear}</span>`;
+    } else {
+        const mName = MONTH_NAMES_FULL[selectedMonth] || 'Month';
+        chipsHtml += `<span class="export-filter-chip"><i class="fa-regular fa-calendar"></i> ${mName} ${selectedYear}</span>`;
+    }
+
+    // Type chip
+    if (historyTypeFilter === 'income') {
+        chipsHtml += `<span class="export-filter-chip"><i class="fa-solid fa-arrow-up" style="color: var(--income-teal);"></i> Income only</span>`;
+    } else if (historyTypeFilter === 'expense') {
+        chipsHtml += `<span class="export-filter-chip"><i class="fa-solid fa-arrow-down" style="color: var(--expense-coral);"></i> Expense only</span>`;
+    } else {
+        chipsHtml += `<span class="export-filter-chip"><i class="fa-solid fa-arrows-up-down"></i> Income & Expense</span>`;
+    }
+
+    // Category chip
+    if (sidebarCategoryFilter) {
+        const catInfo = getCategoryInfo(sidebarCategoryFilter);
+        chipsHtml += `<span class="export-filter-chip"><i class="fa-solid ${catInfo.icon}"></i> ${catInfo.label}</span>`;
+    }
+
+    // Search chip
+    if (historySearchTerm) {
+        chipsHtml += `<span class="export-filter-chip"><i class="fa-solid fa-magnifying-glass"></i> "${escapeHTML(historySearchTerm)}"</span>`;
+    }
+
+    exportContextDetails.innerHTML = chipsHtml;
+}
+
+/**
+ * Trigger backend export for specified format
+ */
+async function exportTransactions(format, overrideScope = null) {
+    hideExportAlert();
+    const token = localStorage.getItem('token');
+    if (!token) {
+        window.location.href = 'login.html';
+        return;
+    }
+
+    const scopeToUse = overrideScope || activeExportScope;
+    const params = new URLSearchParams();
+
+    if (scopeToUse === 'all') {
+        params.append('scope', 'all');
+    } else {
+        params.append('scope', 'filtered');
+
+        if (selectedDashboardDate) {
+            params.append('date', selectedDashboardDate);
+        } else if (selectedMonth === 'lifetime') {
+            params.append('month', 'lifetime');
+        } else if (selectedMonth === 'all') {
+            params.append('month', 'all');
+            params.append('year', selectedYear);
+        } else {
+            params.append('month', selectedMonth);
+            params.append('year', selectedYear);
+        }
+
+        if (historyTypeFilter && historyTypeFilter !== 'all') {
+            params.append('type', historyTypeFilter);
+        }
+
+        if (sidebarCategoryFilter) {
+            params.append('category', sidebarCategoryFilter);
+        }
+
+        if (historySearchTerm) {
+            params.append('search', historySearchTerm);
+        }
+
+        if (historySortOption) {
+            params.append('sort', historySortOption);
+        }
+    }
+
+    showExportLoading('Preparing export...');
+
+    try {
+        const rawUrl = `/api/transactions/export/${format}?${params.toString()}`;
+        const url = (typeof window !== 'undefined' && typeof window.apiUrl === 'function') ? window.apiUrl(rawUrl) : rawUrl;
+        const res = await fetch(url, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (res.status === 401) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = 'login.html';
+            return;
+        }
+
+        // Check if response is JSON (empty data or error)
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+            const data = await res.json();
+            hideExportLoading();
+            showExportAlert(data.error || 'No transactions found for the selected filters.');
+            return;
+        }
+
+        if (!res.ok) {
+            hideExportLoading();
+            showExportAlert('Unable to export transactions. Please try again.');
+            return;
+        }
+
+        // Extract filename from Content-Disposition header if available
+        let downloadFileName = `Wallet_Transactions.${format === 'excel' ? 'xlsx' : format}`;
+        const disposition = res.headers.get('content-disposition');
+        if (disposition && disposition.indexOf('filename=') !== -1) {
+            const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(disposition);
+            if (matches != null && matches[1]) {
+                downloadFileName = matches[1].replace(/['"]/g, '');
+            }
+        }
+
+        const blob = await res.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = downloadFileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(blobUrl);
+
+        hideExportLoading();
+        closeExportModal();
+    } catch (err) {
+        console.error('Export download error:', err);
+        hideExportLoading();
+        showExportAlert('Unable to export transactions. Please try again.');
+    }
+}
+
+function initExportUI() {
+    if (historyExportBtn) {
+        historyExportBtn.addEventListener('click', openExportModal);
+    }
+
+    if (closeExportBtn) {
+        closeExportBtn.addEventListener('click', closeExportModal);
+    }
+
+    if (closeExportAlertBtn) {
+        closeExportAlertBtn.addEventListener('click', hideExportAlert);
+    }
+
+    if (exportScopeFiltered) {
+        exportScopeFiltered.addEventListener('click', () => setExportScope('filtered'));
+    }
+
+    if (exportScopeAll) {
+        exportScopeAll.addEventListener('click', () => setExportScope('all'));
+    }
+
+    if (btnExportCSV) {
+        btnExportCSV.addEventListener('click', () => exportTransactions('csv'));
+    }
+
+    if (btnExportExcel) {
+        btnExportExcel.addEventListener('click', () => exportTransactions('excel'));
+    }
+
+    if (btnExportPDF) {
+        btnExportPDF.addEventListener('click', () => exportTransactions('pdf'));
+    }
+
+    if (btnQuickExportAll) {
+        btnQuickExportAll.addEventListener('click', () => {
+            setExportScope('all');
+            exportTransactions('csv', 'all');
+        });
+    }
+
+    if (exportModal) {
+        exportModal.addEventListener('click', (e) => {
+            if (e.target === exportModal) {
+                closeExportModal();
+            }
+        });
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && exportModal && exportModal.classList.contains('active')) {
+            closeExportModal();
+        }
+        if (e.key === 'Escape' && importPaymentModal && importPaymentModal.classList.contains('active')) {
+            closeImportModal();
+        }
+    });
+}
+
+// ===================================================
+// IMPORT PAYMENT CONTROLLER (PHONEPE / SHARE INTENT)
+// ===================================================
+let activeImportScreenshotBase64 = null;
+let activeImportType = 'expense';
+
+const importPaymentModal = document.getElementById('import-payment-modal');
+const closeImportBtn = document.getElementById('close-import-btn');
+const btnCancelImport = document.getElementById('btn-cancel-import');
+const btnSaveImport = document.getElementById('btn-save-import');
+const importForm = document.getElementById('import-payment-form');
+const importBadgeSource = document.getElementById('import-badge-source');
+const importDuplicateAlert = document.getElementById('import-duplicate-alert');
+const importDuplicateDesc = document.getElementById('import-duplicate-desc');
+
+const importScreenshotPreviewWrap = document.getElementById('import-screenshot-preview-wrap');
+const importScreenshotImg = document.getElementById('import-screenshot-img');
+const btnToggleScreenshot = document.getElementById('btn-toggle-screenshot');
+const screenshotImgContainer = document.getElementById('screenshot-img-container');
+
+const importRawTextWrap = document.getElementById('import-raw-text-wrap');
+const importRawToggle = document.getElementById('import-raw-toggle');
+const importRawText = document.getElementById('import-raw-text');
+const importRawChevron = document.getElementById('import-raw-chevron');
+
+const importAmount = document.getElementById('import-amount');
+const importMerchant = document.getElementById('import-merchant');
+const importCategory = document.getElementById('import-category');
+const importCategoryStatus = document.getElementById('import-category-status');
+const importCategoryTip = document.getElementById('import-category-tip');
+const importDate = document.getElementById('import-date');
+const importTime = document.getElementById('import-time');
+const importMethod = document.getElementById('import-method');
+const importRef = document.getElementById('import-ref');
+const importNote = document.getElementById('import-note');
+const importTypeExpenseBtn = document.getElementById('import-type-expense-btn');
+const importTypeIncomeBtn = document.getElementById('import-type-income-btn');
+
+function openImportModal() {
+    if (importPaymentModal) {
+        importPaymentModal.classList.add('active');
+    }
+}
+
+function closeImportModal() {
+    if (importPaymentModal) {
+        importPaymentModal.classList.remove('active');
+    }
+    activeImportScreenshotBase64 = null;
+}
+
+function setImportType(type) {
+    activeImportType = type;
+    if (importTypeExpenseBtn && importTypeIncomeBtn) {
+        importTypeExpenseBtn.classList.toggle('active', type === 'expense');
+        importTypeIncomeBtn.classList.toggle('active', type === 'income');
+        const expRadio = importTypeExpenseBtn.querySelector('input');
+        const incRadio = importTypeIncomeBtn.querySelector('input');
+        if (expRadio) expRadio.checked = (type === 'expense');
+        if (incRadio) incRadio.checked = (type === 'income');
+    }
+}
+
+/**
+ * Handle incoming Android Share Intent (Text or Image)
+ */
+async function handleWalletShareIntent(payload) {
+    console.log('[Wallet Share Intent Received]:', payload);
+    if (!payload) return;
+
+    // Check authentication
+    const token = localStorage.getItem('token');
+    if (!token) {
+        try {
+            localStorage.setItem('pending_share_payload', JSON.stringify(payload));
+        } catch (e) {}
+        window.location.href = 'login.html';
+        return;
+    }
+
+    const rawText = payload.text || '';
+    const isImage = (payload.type === 'image' || !!payload.imageBase64);
+
+    // Source badge
+    if (importBadgeSource) {
+        let sourceLabel = 'Shared Payment';
+        const lower = rawText.toLowerCase();
+        if (lower.includes('phonepe')) sourceLabel = 'PhonePe Payment';
+        else if (lower.includes('gpay') || lower.includes('google pay')) sourceLabel = 'Google Pay';
+        else if (lower.includes('paytm')) sourceLabel = 'Paytm UPI';
+        else if (isImage) sourceLabel = 'Payment Screenshot';
+        importBadgeSource.innerHTML = `<i class="fa-solid fa-bolt" style="color: var(--primary-purple);"></i> ${sourceLabel}`;
+    }
+
+    // Screenshot preview
+    if (payload.imageBase64) {
+        activeImportScreenshotBase64 = payload.imageBase64;
+        if (importScreenshotImg) importScreenshotImg.src = payload.imageBase64;
+        if (importScreenshotPreviewWrap) importScreenshotPreviewWrap.style.display = 'block';
+    } else {
+        activeImportScreenshotBase64 = null;
+        if (importScreenshotPreviewWrap) importScreenshotPreviewWrap.style.display = 'none';
+    }
+
+    // Raw text collapsible
+    if (rawText && importRawTextWrap && importRawText) {
+        importRawText.textContent = rawText;
+        importRawTextWrap.style.display = 'block';
+    } else if (importRawTextWrap) {
+        importRawTextWrap.style.display = 'none';
+    }
+
+    // Parse payment text using paymentParser.js
+    let parsed = {
+        amount: null,
+        merchant: '',
+        date: new Date().toISOString().split('T')[0],
+        time: '',
+        referenceId: '',
+        note: '',
+        type: 'expense',
+        paymentMethod: 'UPI',
+        category: '',
+        needsCategorySelection: true
+    };
+
+    if (window.PaymentParser && window.PaymentParser.parsePaymentText) {
+        parsed = window.PaymentParser.parsePaymentText(rawText);
+    }
+
+    // Open the modal FIRST so the DOM element is guaranteed to exist
+    openImportModal();
+
+    // 1. Verify actual parsed object on Android (Requirement 1)
+    console.log('[WalletShare] FINAL PARSED RESULT:', parsed);
+    console.log('[WalletShare] parsed amount:', parsed.amount);
+
+    // 2. Verify actual HTML element (Requirement 2)
+    const amountInput = document.getElementById('import-amount');
+    console.log('[WalletShare] amount input:', amountInput);
+    console.log(
+        '[WalletShare] amount input value BEFORE:',
+        amountInput ? amountInput.value : undefined
+    );
+
+    // 3. Force parsed amount into the input AFTER modal exists (Requirement 3 & 8)
+    const importAmountHint = document.getElementById('import-amount-hint');
+    if (amountInput && parsed.amount != null) {
+        amountInput.value = String(Math.abs(Number(parsed.amount)));
+        amountInput.dispatchEvent(new Event('input', { bubbles: true }));
+        amountInput.dispatchEvent(new Event('change', { bubbles: true }));
+        amountInput.style.borderColor = '';
+        if (importAmountHint) importAmountHint.style.display = 'none';
+    } else if (amountInput) {
+        amountInput.value = '';
+        amountInput.placeholder = 'Please enter amount (e.g. 250)';
+        amountInput.style.borderColor = 'rgba(239, 68, 68, 0.7)';
+        if (importAmountHint) importAmountHint.style.display = 'inline-block';
+    }
+
+    console.log(
+        '[WalletShare] amount input value AFTER:',
+        amountInput ? amountInput.value : undefined
+    );
+
+    // 7. Temporary visible debug line inside the Import Payment modal (Requirement 7)
+    const debugAmountEl = document.getElementById('import-debug-detected-amount');
+    if (debugAmountEl) {
+        debugAmountEl.textContent = (parsed.amount != null) ? `₹${parsed.amount}` : 'undefined';
+    }
+
+    // Populate remaining form fields
+    if (importMerchant) importMerchant.value = parsed.merchant || '';
+    if (importDate) importDate.value = parsed.date || new Date().toISOString().split('T')[0];
+    if (importTime) importTime.value = parsed.time || '';
+    if (importMethod) importMethod.value = parsed.paymentMethod || 'PhonePe UPI';
+    if (importRef) importRef.value = parsed.referenceId || '';
+    if (importNote) importNote.value = parsed.note || '';
+
+    setImportType(parsed.type || 'expense');
+
+    // Category handling (Requirement 8 & 9)
+    if (importCategory) {
+        if (parsed.category) {
+            importCategory.value = parsed.category;
+            const catInfo = getCategoryInfo(parsed.category);
+            if (importCategoryStatus) {
+                importCategoryStatus.className = 'category-status-pill detected';
+                importCategoryStatus.innerHTML = `<i class="fa-solid fa-check"></i> ${catInfo.label} detected`;
+            }
+            if (importCategoryTip) importCategoryTip.style.display = 'none';
+        } else {
+            importCategory.value = '';
+            if (importCategoryStatus) {
+                importCategoryStatus.className = 'category-status-pill needs-selection';
+                importCategoryStatus.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> Select Category`;
+            }
+            if (importCategoryTip) importCategoryTip.style.display = 'flex';
+        }
+    }
+
+    // Duplicate Detection Check
+    await checkForDuplicatePayment(parsed);
+}
+
+// Make handleWalletShareIntent accessible to Android native bridge
+window.handleWalletShareIntent = handleWalletShareIntent;
+
+/**
+ * Check for duplicate transactions
+ */
+async function checkForDuplicatePayment(parsed) {
+    if (!importDuplicateAlert) return;
+    importDuplicateAlert.style.display = 'none';
+
+    try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        // 1. First check local transactions in memory
+        let localDup = null;
+        if (parsed.referenceId) {
+            localDup = transactions.find(t => !t.isDeleted && t.referenceId === parsed.referenceId);
+        }
+        if (!localDup && parsed.amount && parsed.date) {
+            const numAmt = Math.abs(parsed.amount);
+            localDup = transactions.find(t => {
+                if (t.isDeleted) return false;
+                const amtMatch = Math.abs(t.amount) === numAmt;
+                const d = formatDateISO(t.date || t.createdAt);
+                const dateMatch = d === parsed.date;
+                return amtMatch && dateMatch;
+            });
+        }
+
+        if (localDup) {
+            showDuplicateWarning(localDup);
+            return;
+        }
+
+        // 2. Query backend duplicate check API
+        const params = new URLSearchParams();
+        if (parsed.referenceId) params.append('referenceId', parsed.referenceId);
+        if (parsed.amount) params.append('amount', parsed.amount);
+        if (parsed.date) params.append('date', parsed.date);
+        if (parsed.merchant) params.append('text', parsed.merchant);
+
+        const dupUrl = (typeof window !== 'undefined' && typeof window.apiUrl === 'function')
+            ? window.apiUrl(`/api/transactions/check-duplicate?${params.toString()}`)
+            : `/api/transactions/check-duplicate?${params.toString()}`;
+        const res = await fetch(dupUrl, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success && data.isDuplicate && data.transaction) {
+            showDuplicateWarning(data.transaction);
+        }
+    } catch (e) {
+        console.error('Error checking duplicate:', e);
+    }
+}
+
+function showDuplicateWarning(tx) {
+    if (!importDuplicateAlert || !importDuplicateDesc) return;
+    const dateFormatted = formatDateMedium(tx.date || tx.createdAt);
+    importDuplicateDesc.textContent = `A matching transaction "${tx.text}" (${formatCurrency(tx.amount)}) was already recorded on ${dateFormatted}.`;
+    importDuplicateAlert.style.display = 'flex';
+}
+
+function initImportPaymentUI() {
+    if (closeImportBtn) closeImportBtn.addEventListener('click', closeImportModal);
+    if (btnCancelImport) btnCancelImport.addEventListener('click', closeImportModal);
+
+    if (importPaymentModal) {
+        importPaymentModal.addEventListener('click', (e) => {
+            if (e.target === importPaymentModal) closeImportModal();
+        });
+    }
+
+    if (importTypeExpenseBtn) {
+        importTypeExpenseBtn.addEventListener('click', () => setImportType('expense'));
+    }
+    if (importTypeIncomeBtn) {
+        importTypeIncomeBtn.addEventListener('click', () => setImportType('income'));
+    }
+
+    // Toggle Screenshot preview
+    if (btnToggleScreenshot && screenshotImgContainer) {
+        btnToggleScreenshot.addEventListener('click', () => {
+            const isHidden = screenshotImgContainer.style.display === 'none';
+            screenshotImgContainer.style.display = isHidden ? 'flex' : 'none';
+            btnToggleScreenshot.textContent = isHidden ? 'Hide Preview' : 'Show Preview';
+        });
+    }
+
+    // Toggle raw receipt text
+    if (importRawToggle && importRawText && importRawChevron) {
+        importRawToggle.addEventListener('click', () => {
+            const isHidden = importRawText.style.display === 'none';
+            importRawText.style.display = isHidden ? 'block' : 'none';
+            importRawChevron.className = isHidden ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down';
+        });
+    }
+
+    // Category change listener: update pill and hide tip
+    if (importCategory) {
+        importCategory.addEventListener('change', () => {
+            if (importCategory.value) {
+                const info = getCategoryInfo(importCategory.value);
+                if (importCategoryStatus) {
+                    importCategoryStatus.className = 'category-status-pill detected';
+                    importCategoryStatus.innerHTML = `<i class="fa-solid fa-check"></i> ${info.label}`;
+                }
+                if (importCategoryTip) importCategoryTip.style.display = 'none';
+                importCategory.style.borderColor = '';
+            } else {
+                if (importCategoryStatus) {
+                    importCategoryStatus.className = 'category-status-pill needs-selection';
+                    importCategoryStatus.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> Select Category`;
+                }
+                if (importCategoryTip) importCategoryTip.style.display = 'flex';
+            }
+        });
+    }
+
+    // Form submission
+    if (importForm) {
+        importForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Validate Category
+            if (!importCategory.value) {
+                importCategory.focus();
+                importCategory.style.borderColor = 'var(--expense-coral)';
+                if (importCategoryTip) importCategoryTip.style.display = 'flex';
+                alert('Please select a category for this transaction.');
+                return;
+            }
+
+            const amountVal = parseFloat(importAmount.value);
+            if (isNaN(amountVal) || amountVal <= 0) {
+                alert('Please enter a valid amount.');
+                return;
+            }
+
+            const finalAmount = activeImportType === 'expense' ? -Math.abs(amountVal) : Math.abs(amountVal);
+            const dateVal = importDate.value;
+            if (!dateVal) {
+                alert('Please select a date.');
+                return;
+            }
+
+            const [y, m, d] = dateVal.split('-').map(Number);
+            const selectedDate = new Date(y, m - 1, d);
+
+            const txPayload = {
+                text: importMerchant.value.trim(),
+                amount: finalAmount,
+                type: activeImportType,
+                category: importCategory.value,
+                date: selectedDate.toISOString(),
+                month: selectedDate.getMonth(),
+                year: selectedDate.getFullYear(),
+                referenceId: importRef ? importRef.value.trim() : null,
+                paymentScreenshot: activeImportScreenshotBase64 || null,
+                paymentMethod: importMethod ? importMethod.value.trim() : 'PhonePe UPI'
+            };
+
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            if (btnSaveImport) {
+                btnSaveImport.disabled = true;
+                btnSaveImport.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+            }
+
+            try {
+                const txPostUrl = (typeof window !== 'undefined' && typeof window.apiUrl === 'function')
+                    ? window.apiUrl('/api/transactions')
+                    : '/api/transactions';
+
+                console.log('[Wallet Share] Submitting POST to:', txPostUrl);
+                console.log('[Wallet Share] Request payload:', JSON.stringify(txPayload, null, 2));
+
+                const res = await fetch(txPostUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(txPayload)
+                });
+
+                console.log('[Wallet Share] Response status:', res.status, res.statusText);
+
+                const contentType = res.headers.get('content-type') || '';
+                let data = {};
+                if (contentType.includes('application/json')) {
+                    data = await res.json();
+                } else {
+                    const textResp = await res.text();
+                    throw new Error(`Server returned status ${res.status}: ${textResp.substring(0, 100)}`);
+                }
+
+                console.log('[Wallet Share] Response data:', data);
+
+                if (res.status === 409 || data.isDuplicate) {
+                    alert(data.error || 'Duplicate transaction: this payment has already been recorded.');
+                    return;
+                }
+
+                if (data.success && data.data) {
+                    transactions.push(data.data);
+                    updateValues();
+                    renderHistoryDOM();
+                    renderYears();
+                    closeImportModal();
+
+                    // Show success toast notification
+                    if (typeof showToastNotification === 'function') {
+                        showToastNotification({
+                            title: 'Payment Imported',
+                            message: `Successfully recorded ${escapeHTML(txPayload.text)} (${formatCurrency(txPayload.amount)})`,
+                            amount: txPayload.amount,
+                            subName: txPayload.text,
+                            color: activeImportType === 'expense' ? '#FF5C72' : '#00D9C0',
+                            icon: 'fa-solid fa-bolt'
+                        });
+                    }
+                } else {
+                    alert(data.error || 'Failed to save imported transaction');
+                }
+            } catch (err) {
+                console.error('[Wallet Share] Error saving imported payment:', err);
+                alert(`Error saving payment: ${err.message || 'Please check server connection'}`);
+            } finally {
+                if (btnSaveImport) {
+                    btnSaveImport.disabled = false;
+                    btnSaveImport.innerHTML = '<i class="fa-solid fa-check"></i> Import & Save';
+                }
+            }
+        });
+    }
+
+    // Check for pending share intent on startup
+    checkPendingShareIntent();
+}
+
+/**
+ * Check if a share intent arrived before page load or during login
+ */
+function checkPendingShareIntent() {
+    try {
+        let payload = null;
+        const stored = localStorage.getItem('pending_share_payload');
+        if (stored) {
+            localStorage.removeItem('pending_share_payload');
+            payload = JSON.parse(stored);
+        } else if (window.__pendingShareIntent) {
+            payload = window.__pendingShareIntent;
+            window.__pendingShareIntent = null;
+        }
+
+        if (payload) {
+            let attempts = 0;
+            const deliver = () => {
+                const amtInput = document.getElementById('import-amount');
+                if (amtInput) {
+                    handleWalletShareIntent(payload);
+                } else if (attempts < 20) {
+                    attempts++;
+                    setTimeout(deliver, 150);
+                } else {
+                    handleWalletShareIntent(payload);
+                }
+            };
+            setTimeout(deliver, 200);
+        }
+    } catch (e) {
+        console.error('Error checking pending share intent:', e);
+    }
+}
+
+/**
+ * Global testing helper (Requirement 18)
+ * Can be triggered from console or testing workflows:
+ * window.simulateShare('food')
+ * window.simulateShare('bill')
+ * window.simulateShare('unknown')
+ */
+window.simulateShare = function (type = 'food') {
+    const samples = {
+        food: 'Paid ₹ 450 to Swiggy via PhonePe. UPI Ref: 425612345678. 24 Sep 2026, 08:30 PM. Note: Dinner',
+        bill: 'Payment of ₹1,200 to Bescom Electricity Successful on 24 Sep 2026. UTR: 123456789012.',
+        transport: 'Paid ₹ 249 to Uber India using UPI. 24 Sep 2026. Ref: 890123456789',
+        unknown: 'Paid ₹ 350 to Random Unknown Vendor X. Txn ID: T987654321. 24 Sep 2026',
+        income: 'Received ₹ 15,000 from Client Corp on 24 Sep 2026 via PhonePe. Ref: 789123456012'
+    };
+
+    const text = samples[type] || type;
+    handleWalletShareIntent({
+        type: 'text',
+        text: text,
+        source: 'simulation_test'
+    });
+};
+
 // App Initialization
 function init() {
     initUserProfile();
@@ -2932,9 +3753,10 @@ function init() {
     renderHistoryDOM();
     initSubscriptionsUI();
     initNotificationsUI();
+    initExportUI();
+    initImportPaymentUI();
     loadSubscriptions(true);
 }
 
 // Initial Kickoff
 getTransactions();
-
