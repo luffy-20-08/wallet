@@ -629,6 +629,7 @@ function generatePDF(transactions, options = {}) {
             const range = doc.bufferedPageRange();
             for (let i = range.start; i < range.start + range.count; i++) {
                 doc.switchToPage(i);
+                doc.page.margins.bottom = 0; // Prevent PDFKit from auto-adding extra pages in footer area
 
                 const footerY = pageHeight - margin + 6;
 
@@ -640,11 +641,14 @@ function generatePDF(transactions, options = {}) {
                     .stroke();
 
                 doc.font(fontRegular).fontSize(7.5).fillColor(COLOR_MUTED);
-                doc.text('Wallet  ·  Discipline today, freedom tomorrow', margin, footerY, { align: 'left' });
+                doc.text('Wallet  ·  Discipline today, freedom tomorrow', margin, footerY, {
+                    lineBreak: false
+                });
 
                 doc.text(`Generated on ${generatedAtStr}  |  Page ${i + 1} of ${range.count}`, margin, footerY, {
                     align: 'right',
-                    width: contentWidth
+                    width: contentWidth,
+                    lineBreak: false
                 });
             }
 
