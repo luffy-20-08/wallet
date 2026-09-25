@@ -3065,10 +3065,132 @@ function updateExportContextUI() {
 }
 
 /**
+ * Detect if running inside the Capacitor Android native application
+ */
+function isNativeCapacitorApp() {
+    if (typeof window === 'undefined') return false;
+    // 0. Direct Android Native bridge
+    if (typeof window.AndroidNativeExport !== 'undefined') return true;
+    // 1. Capacitor native platform bridge
+    if (window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function') {
+        if (window.Capacitor.isNativePlatform()) return true;
+    }
+    // 2. Capacitor getPlatform()
+    if (window.Capacitor && typeof window.Capacitor.getPlatform === 'function') {
+        const p = window.Capacitor.getPlatform();
+        if (p === 'android' || p === 'ios') return true;
+    }
+    // 3. Android WebView native bridge object injected by Capacitor Android Bridge
+    if (window.androidBridge) return true;
+    // 4. Capacitor custom scheme
+    if (window.location && window.location.protocol === 'capacitor:') return true;
+    // 5. Capacitor localhost WebView origin (port empty or 80 inside Android WebView)
+    if (window.location && window.location.hostname === 'localhost' && window.location.port !== '8000' && window.location.port !== '3000') {
+        if (window.Capacitor || window.androidBridge) return true;
+    }
+    // 6. APP_CONFIG check
+    if (window.APP_CONFIG && typeof window.APP_CONFIG.isNativePlatform === 'function') {
+        if (window.APP_CONFIG.isNativePlatform()) return true;
+    }
+    return false;
+}
+
+/**
+ * Access a Capacitor Plugin reliably via Plugins object, registerPlugin, or nativePromise bridge
+ */
+function getCapacitorPlugin(pluginName) {
+    if (typeof window === 'undefined' || !window.Capacitor) return null;
+    if (window.Capacitor.Plugins && window.Capacitor.Plugins[pluginName]) {
+        return window.Capacitor.Plugins[pluginName];
+    }
+    if (typeof window.Capacitor.registerPlugin === 'function') {
+        try {
+            return window.Capacitor.registerPlugin(pluginName);
+        } catch (e) {
+            // Plugin may already be registered
+        }
+    }
+    if (typeof window.Capacitor.nativePromise === 'function') {
+        return new Proxy({}, {
+            get(_, prop) {
+                return (options) => window.Capacitor.nativePromise(pluginName, prop.toString(), options);
+            }
+        });
+    }
+    return null;
+}
+
+/**
+ * Convert an ArrayBuffer directly and synchronously to Base64
+ */
+function arrayBufferToBase64(buffer) {
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    const len = bytes.byteLength;
+    const chunkSize = 8192;
+    for (let i = 0; i < len; i += chunkSize) {
+        const chunk = bytes.subarray(i, Math.min(i + chunkSize, len));
+        binary += String.fromCharCode.apply(null, chunk);
+    }
+    return btoa(binary);
+}
+
+/**
+ * Show a modern styled toast notification for export and system events
+ */
+function showAppNotificationToast(title, message, type = 'success') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const isSuccess = type === 'success';
+    const isError = type === 'error';
+    const color = isSuccess ? '#00D09C' : (isError ? '#FF6B6B' : '#A970FF');
+    const icon = isSuccess ? 'fa-solid fa-file-circle-check' : (isError ? 'fa-solid fa-circle-exclamation' : 'fa-solid fa-circle-info');
+    const badgeText = isSuccess ? 'Saved to device' : (isError ? 'Action failed' : 'Notice');
+
+    const toast = document.createElement('div');
+    toast.className = 'toast-card';
+    toast.innerHTML = `
+        <div class="toast-icon" style="background: ${color}25; color: ${color}; border: 1px solid ${color}44;">
+            <i class="${icon}"></i>
+        </div>
+        <div class="toast-content" style="flex: 1; min-width: 0;">
+            <div class="toast-header" style="margin-bottom: 3px;">
+                <span class="toast-title" style="font-weight: 600; font-size: 14px; color: #FFFFFF;">${escapeHTML(title)}</span>
+            </div>
+            <div class="toast-body" style="font-size: 13px; color: rgba(255,255,255,0.85); line-height: 1.4; word-break: break-word;">${escapeHTML(message)}</div>
+            <div class="toast-footer" style="margin-top: 6px; display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 11px; color: ${color}; font-weight: 500;"><i class="${isSuccess ? 'fa-solid fa-check' : 'fa-solid fa-info'}"></i> ${badgeText}</span>
+                <button type="button" class="toast-close-btn" aria-label="Close notification"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+        </div>
+        <div class="toast-progress-bar" style="background: ${color};"></div>
+    `;
+
+    container.appendChild(toast);
+
+    const closeBtn = toast.querySelector('.toast-close-btn');
+    let isRemoved = false;
+    const dismiss = () => {
+        if (isRemoved) return;
+        isRemoved = true;
+        toast.classList.add('leaving');
+        setTimeout(() => {
+            if (toast.parentNode) toast.parentNode.removeChild(toast);
+        }, 300);
+    };
+
+    if (closeBtn) closeBtn.addEventListener('click', dismiss);
+    setTimeout(dismiss, 5000);
+}
+
+/**
  * Trigger backend export for specified format
  */
 async function exportTransactions(format, overrideScope = null) {
     hideExportAlert();
+    let currentStage = 'INIT';
+
     const token = localStorage.getItem('token');
     if (!token) {
         window.location.href = 'login.html';
@@ -3112,50 +3234,253 @@ async function exportTransactions(format, overrideScope = null) {
         }
     }
 
-    showExportLoading('Preparing export...');
-
     try {
+        // ================= STAGE A: Export API Request Starts =================
+        currentStage = 'A: Requesting export from server';
+        showExportLoading('Starting export request...');
+
         const rawUrl = `/api/transactions/export/${format}?${params.toString()}`;
         const url = (typeof window !== 'undefined' && typeof window.apiUrl === 'function') ? window.apiUrl(rawUrl) : rawUrl;
+        console.log(`[Export Stage A] Request URL: ${url} | Format: ${format} | Scope: ${scopeToUse}`);
+
+        // ================= STAGE B: HTTP Response Status =================
+        currentStage = 'B: Connecting to server';
         const res = await fetch(url, {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
         });
+        console.log(`[Export Stage B] HTTP Response: status=${res.status}, statusText="${res.statusText}"`);
 
         if (res.status === 401) {
+            hideExportLoading();
+            showExportAlert('[Stage B: Authentication] Session expired. Please log in again.');
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             window.location.href = 'login.html';
             return;
         }
 
-        // Check if response is JSON (empty data or error)
+        // ================= STAGE C: Response Content-Type & Diagnostics =================
+        currentStage = 'C: Inspecting response type';
         const contentType = res.headers.get('content-type') || '';
-        if (contentType.includes('application/json')) {
+        const contentLength = res.headers.get('content-length') || 'Unknown';
+        const isJson = contentType.includes('application/json');
+        const isHtml = contentType.includes('text/html');
+        const isPdf = contentType.includes('application/pdf');
+        const responseFormatKind = isJson ? 'JSON' : (isHtml ? 'HTML' : (isPdf ? 'PDF' : (contentType || 'Binary')));
+
+        console.log(`[Export Stage C] Request URL: ${url}`);
+        console.log(`[Export Stage C] HTTP Status: ${res.status} (${res.statusText})`);
+        console.log(`[Export Stage C] Content-Type: "${contentType}"`);
+        console.log(`[Export Stage C] Content-Length: ${contentLength}`);
+        console.log(`[Export Stage C] Format Kind: ${responseFormatKind}`);
+
+        // If response is JSON (empty transactions or server error)
+        if (isJson) {
             const data = await res.json();
+            console.log('[Export Stage C] JSON response received:', data);
             hideExportLoading();
-            showExportAlert(data.error || 'No transactions found for the selected filters.');
+            const errorMsg = data.error || (data.count === 0 ? 'No transactions found for the selected filters.' : 'Server returned an error.');
+            const safeBody = JSON.stringify(data).substring(0, 160);
+            showExportAlert(`[Stage C: Server Message] ${errorMsg}\n[Diagnostics] HTTP ${res.status} [${responseFormatKind}] | Type: ${contentType} | Length: ${contentLength} | URL: ${url} | Body: ${safeBody}`);
             return;
         }
 
         if (!res.ok) {
+            const errorText = await res.text();
+            console.error(`[Export Stage B/C] Server returned HTTP ${res.status}:`, errorText);
             hideExportLoading();
-            showExportAlert('Unable to export transactions. Please try again.');
+            const safeBody = (errorText || res.statusText || 'Export failed').substring(0, 160);
+            showExportAlert(`[Stage C: Server Error] HTTP ${res.status} [${responseFormatKind}]: ${safeBody}\n[Diagnostics] Type: ${contentType} | Length: ${contentLength} | URL: ${url}`);
             return;
         }
 
-        // Extract filename from Content-Disposition header if available
-        let downloadFileName = `Wallet_Transactions.${format === 'excel' ? 'xlsx' : format}`;
+        // ================= STAGE D: Response Blob & Buffer Size =================
+        currentStage = 'D: Receiving file data';
+        showExportLoading('Receiving file data...');
+        const arrayBuffer = await res.arrayBuffer();
+        const bufferSize = arrayBuffer ? arrayBuffer.byteLength : 0;
+        console.log(`[Export Stage D] ArrayBuffer received: size=${bufferSize} bytes`);
+
+        if (bufferSize === 0) {
+            hideExportLoading();
+            showExportAlert('[Stage D: Data Size] Export failed: Server returned 0 bytes of data.');
+            return;
+        }
+
+        // ================= STAGE E: Blob MIME Type & Blob Object =================
+        currentStage = 'E: Preparing file object';
+        const defaultMime = format === 'pdf' ? 'application/pdf' : ((format === 'excel' || format === 'xlsx') ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'text/csv');
+        const resolvedMime = contentType.split(';')[0].trim() || defaultMime;
+        const blob = new Blob([arrayBuffer], { type: resolvedMime });
+        console.log(`[Export Stage E] Blob created: size=${blob.size}, type="${blob.type}"`);
+
+        // ================= STAGE F: Blob -> Base64 & Magic Header Inspection =================
+        currentStage = 'F: Validating file content';
+        const uint8 = new Uint8Array(arrayBuffer);
+        const headerAscii = String.fromCharCode(...uint8.slice(0, Math.min(8, uint8.length)));
+        const headerHex = Array.from(uint8.slice(0, 8)).map(b => b.toString(16).padStart(2, '0')).join(' ');
+        console.log(`[Export Stage F] File Header: ASCII="${headerAscii}", HEX=[${headerHex}]`);
+
+        if (format === 'pdf') {
+            if (!headerAscii.startsWith('%PDF')) {
+                console.warn('[Export Stage F] Warning: File header does not start with %PDF! Actual:', headerAscii);
+                if (headerAscii.startsWith('<') || headerAscii.startsWith('{')) {
+                    const textSnippet = new TextDecoder().decode(uint8.slice(0, 300));
+                    hideExportLoading();
+                    showExportAlert(`[Stage F: Header Error] Server returned HTML/JSON instead of PDF: ${textSnippet}`);
+                    return;
+                }
+            } else {
+                console.log('[Export Stage F] Verified valid %PDF magic header');
+            }
+        } else if (format === 'excel' || format === 'xlsx') {
+            if (!headerAscii.startsWith('PK')) {
+                console.warn('[Export Stage F] Warning: Excel file header does not start with PK zip header! Actual:', headerAscii);
+            } else {
+                console.log('[Export Stage F] Verified valid PK Excel zip header');
+            }
+        }
+
+        // Safe filename generation
+        const ext = (format === 'excel' || format === 'xlsx') ? 'xlsx' : (format === 'pdf' ? 'pdf' : 'csv');
+        let downloadFileName = '';
         const disposition = res.headers.get('content-disposition');
         if (disposition && disposition.indexOf('filename=') !== -1) {
             const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(disposition);
             if (matches != null && matches[1]) {
-                downloadFileName = matches[1].replace(/['"]/g, '');
+                downloadFileName = matches[1].replace(/['"]/g, '').trim();
             }
         }
 
-        const blob = await res.blob();
+        if (!downloadFileName) {
+            const today = new Date().toISOString().split('T')[0];
+            downloadFileName = `wallet-transactions-${today}.${ext}`;
+        }
+
+        if (!downloadFileName.toLowerCase().endsWith('.' + ext)) {
+            downloadFileName = `${downloadFileName.replace(/\.[^/.]+$/, '')}.${ext}`;
+        }
+
+        // Clean filename for safety across file systems and Android Intents
+        downloadFileName = downloadFileName.replace(/[/\\?%*:|"<>]/g, '_').replace(/\s+/g, '_');
+        console.log(`[Export Stage F] Output filename: "${downloadFileName}"`);
+
+        // Convert ArrayBuffer to Base64
+        const base64Data = arrayBufferToBase64(arrayBuffer);
+        console.log(`[Export Stage F] Base64 encoded length: ${base64Data.length} characters`);
+
+        // Check platform: Android Native vs Normal Web Browser
+        const isNative = isNativeCapacitorApp();
+        console.log(`[Export Stage F] Platform detection: isNativeCapacitorApp=${isNative}`);
+
+        // ================= 1. ANDROID NATIVE FLOW (DIRECT BRIDGE & CAPACITOR) =================
+        if (isNative) {
+            // Path 1A: Direct Android Native Bridge (Guarantees FileProvider + Intent chooser + Granted Permissions)
+            if (typeof window.AndroidNativeExport !== 'undefined' && typeof window.AndroidNativeExport.saveAndShareFile === 'function') {
+                currentStage = 'G: Saving file to device';
+                showExportLoading('Saving file to Android device...');
+                console.log(`[Export Stage G] Using AndroidNativeExport for ${downloadFileName} (mime: ${resolvedMime})`);
+
+                const rawResult = window.AndroidNativeExport.saveAndShareFile(
+                    downloadFileName,
+                    base64Data,
+                    resolvedMime,
+                    `Open or Share ${downloadFileName}`
+                );
+                console.log('[Export Stage G/H] AndroidNativeExport raw result:', rawResult);
+
+                currentStage = 'H: Verifying saved file';
+                let parsedResult;
+                try {
+                    parsedResult = typeof rawResult === 'string' ? JSON.parse(rawResult) : rawResult;
+                } catch (e) {
+                    throw new Error('Failed to parse Android native export response: ' + rawResult);
+                }
+
+                if (!parsedResult || !parsedResult.success) {
+                    throw new Error(parsedResult && parsedResult.error ? parsedResult.error : 'Native file save failed');
+                }
+
+                currentStage = 'I: Opening share sheet';
+                console.log(`[Export Stage I] File saved at ${parsedResult.path} (${parsedResult.size} bytes), Content URI: ${parsedResult.uri}`);
+
+                hideExportLoading();
+                closeExportModal();
+                showAppNotificationToast('Export saved successfully', downloadFileName, 'success');
+                return;
+            }
+
+            // Path 1B: Capacitor Filesystem.writeFile() & Share.share()
+            currentStage = 'G: Saving file via Capacitor Filesystem';
+            showExportLoading('Saving file to device cache...');
+
+            const filesystem = getCapacitorPlugin('Filesystem');
+            if (!filesystem || typeof filesystem.writeFile !== 'function') {
+                throw new Error('Capacitor Filesystem plugin is not available on this device');
+            }
+
+            console.log(`[Export Stage G] Writing to CACHE directory: ${downloadFileName}`);
+            const cacheResult = await filesystem.writeFile({
+                path: downloadFileName,
+                data: base64Data,
+                directory: 'CACHE',
+                recursive: true
+            });
+            const cacheUri = cacheResult && (cacheResult.uri || cacheResult.path);
+            console.log(`[Export Stage G] CACHE write succeeded. URI: ${cacheUri}`);
+
+            // Also attempt to save a copy to public DOCUMENTS for easy access in file manager
+            try {
+                const docResult = await filesystem.writeFile({
+                    path: downloadFileName,
+                    data: base64Data,
+                    directory: 'DOCUMENTS',
+                    recursive: true
+                });
+                console.log(`[Export Stage G] Public DOCUMENTS copy saved: ${docResult && (docResult.uri || docResult.path)}`);
+            } catch (docErr) {
+                console.log('[Export Stage G] Note: Public DOCUMENTS copy skipped/restricted (non-fatal):', docErr);
+            }
+
+            currentStage = 'H: Verifying file URI';
+            let shareableUri = cacheUri;
+            if (!shareableUri) {
+                throw new Error('Filesystem.writeFile did not return a valid file URI');
+            }
+            if (!shareableUri.startsWith('file:') && !shareableUri.startsWith('content:')) {
+                shareableUri = 'file://' + shareableUri;
+            }
+            console.log(`[Export Stage H] Verified shareable URI: "${shareableUri}"`);
+
+            hideExportLoading();
+            closeExportModal();
+            showAppNotificationToast('Export saved successfully', downloadFileName, 'success');
+
+            currentStage = 'I: Launching Capacitor Share';
+            const sharePlugin = getCapacitorPlugin('Share');
+            if (sharePlugin && typeof sharePlugin.share === 'function') {
+                console.log(`[Export Stage I] Invoking Share.share with files: ["${shareableUri}"]`);
+                try {
+                    await sharePlugin.share({
+                        title: downloadFileName,
+                        files: [shareableUri],
+                        dialogTitle: 'Export saved: Open or Share'
+                    });
+                    console.log('[Export Stage I] Share sheet opened successfully');
+                } catch (shareErr) {
+                    console.log('[Export Stage I] Share sheet dismissed or closed:', shareErr);
+                }
+            } else {
+                console.warn('[Export Stage I] Share plugin not available, file saved in cache');
+            }
+            return;
+        }
+
+        // ================= 2. STANDARD WEB BROWSER FLOW =================
+        currentStage = 'BROWSER_DOWNLOAD';
+        console.log('[Export] Browser mode: Creating object URL and triggering download');
         const blobUrl = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = blobUrl;
@@ -3168,9 +3493,12 @@ async function exportTransactions(format, overrideScope = null) {
         hideExportLoading();
         closeExportModal();
     } catch (err) {
-        console.error('Export download error:', err);
+        // ================= STAGE J: Exception / Error Diagnostic =================
+        console.error(`[Export Stage J] Export error at [${currentStage}]:`, err);
         hideExportLoading();
-        showExportAlert('Unable to export transactions. Please try again.');
+        const stagePrefix = currentStage ? `[${currentStage}] ` : '';
+        const errorMessage = (err && err.message) ? err.message : String(err || 'Unknown error');
+        showExportAlert(`${stagePrefix}PDF export failed: ${errorMessage}`);
     }
 }
 

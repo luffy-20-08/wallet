@@ -2,14 +2,19 @@ package com.wallet.tracker;
 
 import android.content.ClipData;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Base64;
 import android.util.Log;
+import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebView;
+
+import androidx.core.content.FileProvider;
 
 import com.getcapacitor.BridgeActivity;
 import com.google.mlkit.vision.common.InputImage;
@@ -20,7 +25,10 @@ import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.util.List;
 
 public class MainActivity extends BridgeActivity {
     private static final String TAG = "WalletShare";
@@ -31,6 +39,12 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         textRecognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS);
+
+        WebView webView = getBridge() != null ? getBridge().getWebView() : null;
+        if (webView != null) {
+            webView.clearCache(true);
+            webView.addJavascriptInterface(new AndroidNativeExportInterface(), "AndroidNativeExport");
+        }
 
         Intent intent = getIntent();
         if (intent != null) {
@@ -260,9 +274,98 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onResume() {
         super.onResume();
+        WebView webView = getBridge() != null ? getBridge().getWebView() : null;
+        if (webView != null) {
+            webView.addJavascriptInterface(new AndroidNativeExportInterface(), "AndroidNativeExport");
+        }
+
         if (pendingSharePayload != null) {
             sendSharePayloadToWeb(pendingSharePayload);
             pendingSharePayload = null;
+        }
+    }
+
+    /**
+     * Native Android Export Interface
+     * Directly saves generated export files to app cache and triggers Android Chooser
+     * with granted read permissions and exact MIME type.
+     */
+    public class AndroidNativeExportInterface {
+        @JavascriptInterface
+        public String saveAndShareFile(String fileName, String base64Data, String mimeType, String dialogTitle) {
+            try {
+                Log.d(TAG, "AndroidNativeExport: saveAndShareFile: " + fileName + ", mime: " + mimeType);
+                if (base64Data == null || base64Data.trim().isEmpty()) {
+                    return new JSONObject().put("success", false).put("error", "Empty base64 data received").toString();
+                }
+
+                String cleanBase64 = base64Data.trim();
+                if (cleanBase64.contains(",")) {
+                    cleanBase64 = cleanBase64.substring(cleanBase64.indexOf(",") + 1);
+                }
+
+                byte[] fileBytes = Base64.decode(cleanBase64, Base64.DEFAULT);
+                if (fileBytes == null || fileBytes.length == 0) {
+                    return new JSONObject().put("success", false).put("error", "Decoded file bytes is 0").toString();
+                }
+
+                File cacheDir = getCacheDir();
+                File exportDir = new File(cacheDir, "exports");
+                if (!exportDir.exists()) {
+                    exportDir.mkdirs();
+                }
+
+                File outFile = new File(exportDir, fileName);
+                FileOutputStream fos = new FileOutputStream(outFile);
+                fos.write(fileBytes);
+                fos.flush();
+                fos.close();
+
+                Log.i(TAG, "AndroidNativeExport: Saved " + outFile.length() + " bytes to " + outFile.getAbsolutePath());
+
+                Uri contentUri = FileProvider.getUriForFile(
+                    MainActivity.this,
+                    getPackageName() + ".fileprovider",
+                    outFile
+                );
+
+                Log.i(TAG, "AndroidNativeExport: FileProvider content URI: " + contentUri);
+
+                Intent sendIntent = new Intent(Intent.ACTION_SEND);
+                String resolvedMime = (mimeType != null && !mimeType.trim().isEmpty()) ? mimeType.trim() : "application/pdf";
+                sendIntent.setType(resolvedMime);
+                sendIntent.putExtra(Intent.EXTRA_STREAM, contentUri);
+                sendIntent.putExtra(Intent.EXTRA_SUBJECT, fileName);
+                sendIntent.setClipData(ClipData.newRawUri(fileName, contentUri));
+                sendIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+                Intent chooser = Intent.createChooser(sendIntent, dialogTitle != null ? dialogTitle : "Export: " + fileName);
+                chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+                // Grant explicit URI read permissions to all apps matching the chooser
+                List<ResolveInfo> resInfoList = getPackageManager().queryIntentActivities(chooser, PackageManager.MATCH_DEFAULT_ONLY);
+                for (ResolveInfo resolveInfo : resInfoList) {
+                    String targetPackage = resolveInfo.activityInfo.packageName;
+                    grantUriPermission(targetPackage, contentUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                }
+
+                startActivity(chooser);
+
+                JSONObject res = new JSONObject();
+                res.put("success", true);
+                res.put("uri", contentUri.toString());
+                res.put("path", outFile.getAbsolutePath());
+                res.put("size", outFile.length());
+                return res.toString();
+            } catch (Exception e) {
+                Log.e(TAG, "AndroidNativeExport exception", e);
+                try {
+                    return new JSONObject().put("success", false).put("error", e.getMessage() != null ? e.getMessage() : e.toString()).toString();
+                } catch (Exception ignored) {
+                    return "{\"success\":false,\"error\":\"" + e.getMessage() + "\"}";
+                }
+            }
         }
     }
 }

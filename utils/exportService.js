@@ -1,6 +1,21 @@
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
 
+// Explicit standard font imports to ensure serverless bundlers (such as @vercel/nft on Vercel)
+// package the necessary font definitions and metrics with the lambda function.
+try {
+    require('pdfkit/standard-fonts/Helvetica');
+    require('pdfkit/standard-fonts/HelveticaBold');
+    require('pdfkit/standard-fonts/HelveticaOblique');
+    require('pdfkit/standard-fonts/HelveticaBoldOblique');
+    require('pdfkit/standard-fonts/Courier');
+    require('pdfkit/standard-fonts/CourierBold');
+    require('pdfkit/standard-fonts/TimesRoman');
+    require('pdfkit/standard-fonts/TimesBold');
+} catch (e) {
+    // Non-fatal if standard-fonts are resolved differently in custom environments
+}
+
 // Friendly category labels and icons matching frontend
 const CATEGORY_MAP = {
     'Food': 'Food & Dining',

@@ -59,7 +59,7 @@ async function handleExport(format, req, res) {
         console.error(`Export ${format} error:`, err);
         return res.status(500).json({
             success: false,
-            error: 'Unable to export transactions. Please try again.'
+            error: err.message || 'Unable to export transactions. Please try again.'
         });
     }
 }
