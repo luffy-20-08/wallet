@@ -1,5 +1,11 @@
+const path = require('path');
+const fs = require('fs');
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
+
+// Paths to bundled Unicode fonts supporting Indian Rupee symbol (₹ / U+20B9)
+const FONT_REGULAR_PATH = path.join(__dirname, 'fonts', 'NotoSans-Regular.ttf');
+const FONT_BOLD_PATH = path.join(__dirname, 'fonts', 'NotoSans-Bold.ttf');
 
 // Explicit standard font imports to ensure serverless bundlers (such as @vercel/nft on Vercel)
 // package the necessary font definitions and metrics with the lambda function.
@@ -414,6 +420,22 @@ function generatePDF(transactions, options = {}) {
                 bufferPages: true
             });
 
+            // Register Unicode TrueType fonts (supports authentic Indian Rupee ₹ / U+20B9)
+            // with resilient fallback to standard Helvetica
+            let fontRegular = 'Helvetica';
+            let fontBold = 'Helvetica-Bold';
+
+            try {
+                if (fs.existsSync(FONT_REGULAR_PATH) && fs.existsSync(FONT_BOLD_PATH)) {
+                    doc.registerFont('NotoSans', FONT_REGULAR_PATH);
+                    doc.registerFont('NotoSans-Bold', FONT_BOLD_PATH);
+                    fontRegular = 'NotoSans';
+                    fontBold = 'NotoSans-Bold';
+                }
+            } catch (fontErr) {
+                console.warn('[PDF Export] Failed registering NotoSans fonts, falling back to Helvetica:', fontErr.message);
+            }
+
             const buffers = [];
             doc.on('data', chunk => buffers.push(chunk));
             doc.on('end', () => resolve(Buffer.concat(buffers)));
@@ -458,17 +480,17 @@ function generatePDF(transactions, options = {}) {
             doc.roundedRect(margin, currentY, 4, 34, 2).fill(COLOR_PURPLE);
 
             // Brand Text
-            doc.font('Helvetica-Bold').fontSize(18).fillColor(COLOR_TEXT);
+            doc.font(fontBold).fontSize(18).fillColor(COLOR_TEXT);
             doc.text('Wallet', margin + 12, currentY);
 
-            doc.font('Helvetica').fontSize(9).fillColor(COLOR_MUTED);
+            doc.font(fontRegular).fontSize(9).fillColor(COLOR_MUTED);
             doc.text('Personal Finance & Expense Tracker', margin + 12, currentY + 20);
 
             // Right Header: Report Type & Period
-            doc.font('Helvetica-Bold').fontSize(14).fillColor(COLOR_PURPLE_LIGHT);
+            doc.font(fontBold).fontSize(14).fillColor(COLOR_PURPLE_LIGHT);
             doc.text('TRANSACTION REPORT', margin, currentY + 2, { align: 'right', width: contentWidth });
 
-            doc.font('Helvetica').fontSize(9).fillColor(COLOR_MUTED);
+            doc.font(fontRegular).fontSize(9).fillColor(COLOR_MUTED);
             doc.text(`Period: ${periodText}`, margin, currentY + 18, { align: 'right', width: contentWidth });
 
             currentY += 46;
@@ -500,11 +522,11 @@ function generatePDF(transactions, options = {}) {
                     .fillAndStroke(COLOR_CARD, COLOR_BORDER);
 
                 // Card label
-                doc.font('Helvetica-Bold').fontSize(7.5).fillColor(COLOR_MUTED);
+                doc.font(fontBold).fontSize(7.5).fillColor(COLOR_MUTED);
                 doc.text(card.label, cardX + 10, currentY + 10, { width: cardWidth - 20, align: 'left' });
 
                 // Card value
-                doc.font('Helvetica-Bold').fontSize(11).fillColor(card.color);
+                doc.font(fontBold).fontSize(11).fillColor(card.color);
                 doc.text(card.value, cardX + 10, currentY + 26, { width: cardWidth - 20, align: 'left' });
             });
 
@@ -523,7 +545,7 @@ function generatePDF(transactions, options = {}) {
                 // Header bar
                 doc.roundedRect(margin, y, contentWidth, 22, 4).fill('#1F1B2E');
 
-                doc.font('Helvetica-Bold').fontSize(8).fillColor('#E2D9F3');
+                doc.font(fontBold).fontSize(8).fillColor('#E2D9F3');
 
                 let colX = margin + 8;
                 doc.text('DATE', colX, y + 6, { width: colWidths.date });
@@ -574,29 +596,29 @@ function generatePDF(transactions, options = {}) {
                 let colX = margin + 8;
 
                 // Date
-                doc.font('Helvetica').fontSize(8).fillColor(COLOR_MUTED);
+                doc.font(fontRegular).fontSize(8).fillColor(COLOR_MUTED);
                 doc.text(formatDateISO(t.date || t.createdAt), colX, currentY + 6, { width: colWidths.date });
 
                 // Description
                 colX += colWidths.date;
-                doc.font('Helvetica').fontSize(8).fillColor(COLOR_TEXT);
+                doc.font(fontRegular).fontSize(8).fillColor(COLOR_TEXT);
                 const descText = String(t.text || 'Transaction').substring(0, 38);
                 doc.text(descText, colX, currentY + 6, { width: colWidths.desc, ellipsis: true });
 
                 // Category
                 colX += colWidths.desc;
-                doc.font('Helvetica').fontSize(8).fillColor(COLOR_MUTED);
+                doc.font(fontRegular).fontSize(8).fillColor(COLOR_MUTED);
                 const catLabel = getCategoryLabel(t.category);
                 doc.text(catLabel, colX, currentY + 6, { width: colWidths.category, ellipsis: true });
 
                 // Type
                 colX += colWidths.category;
-                doc.font('Helvetica-Bold').fontSize(7.5).fillColor(isExp ? COLOR_CORAL : COLOR_TEAL);
+                doc.font(fontBold).fontSize(7.5).fillColor(isExp ? COLOR_CORAL : COLOR_TEAL);
                 doc.text(isExp ? 'Expense' : 'Income', colX, currentY + 6, { width: colWidths.type, align: 'center' });
 
                 // Amount
                 colX += colWidths.type;
-                doc.font('Helvetica-Bold').fontSize(8.5).fillColor(isExp ? COLOR_CORAL : COLOR_TEAL);
+                doc.font(fontBold).fontSize(8.5).fillColor(isExp ? COLOR_CORAL : COLOR_TEAL);
                 const formattedAmt = (isExp ? '-' : '+') + formatCurrency(t.amount);
                 doc.text(formattedAmt, colX, currentY + 6, { width: colWidths.amount - 16, align: 'right' });
 
@@ -617,7 +639,7 @@ function generatePDF(transactions, options = {}) {
                     .lineWidth(0.7)
                     .stroke();
 
-                doc.font('Helvetica').fontSize(7.5).fillColor(COLOR_MUTED);
+                doc.font(fontRegular).fontSize(7.5).fillColor(COLOR_MUTED);
                 doc.text('Wallet  ·  Discipline today, freedom tomorrow', margin, footerY, { align: 'left' });
 
                 doc.text(`Generated on ${generatedAtStr}  |  Page ${i + 1} of ${range.count}`, margin, footerY, {
@@ -632,6 +654,7 @@ function generatePDF(transactions, options = {}) {
         }
     });
 }
+
 
 /**
  * ----------------------------------------------------
