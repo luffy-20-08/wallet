@@ -102,30 +102,56 @@ router.post('/login', async (req, res) => {
             return res.status(400).json({ success: false, error: 'Please provide both username/email and password' });
         }
 
-        // Check for user by email OR username
+        const rawIdentifier = (email || '').trim();
+        const connectedDb = mongoose.connection ? mongoose.connection.name : 'unknown';
+
+        // Check for user by email OR username (case-insensitive regex and exact match)
+        const escaped = rawIdentifier.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const user = await User.findOne({
-            $or: [{ email: email }, { username: email }]
+            $or: [
+                { email: rawIdentifier },
+                { username: rawIdentifier },
+                { email: new RegExp('^' + escaped + '$', 'i') },
+                { username: new RegExp('^' + escaped + '$', 'i') }
+            ]
         }).select('+password');
 
-        if (!user) {
-            return res.status(400).json({ success: false, error: 'Invalid credentials' });
+        const userFound = !!user;
+        const passwordExists = !!(user && user.password);
+        let bcryptMatched = false;
+        let plainMatched = false;
+
+        if (user && user.password) {
+            try {
+                // Support bcrypt compare on any standard hash ($2a$, $2b$, $2y$, etc.)
+                bcryptMatched = await bcrypt.compare(password, user.password);
+            } catch (cmpErr) {
+                console.warn('[Auth Diagnostic] bcrypt.compare error:', cmpErr.message);
+            }
+
+            if (!bcryptMatched && user.password === password) {
+                plainMatched = true;
+                user.markModified('password');
+                await user.save();
+            }
         }
 
-        // Password verification & safe migration of legacy plain-text passwords
-        let isMatch = false;
-        const isBcryptHash = user.password && (user.password.startsWith('$2a$') || user.password.startsWith('$2b$'));
+        const isMatch = bcryptMatched || plainMatched;
 
-        if (isBcryptHash) {
-            isMatch = await user.matchPassword(password);
-        } else if (user.password === password) {
-            // Match found on legacy unhashed password -> safely migrate to bcrypt hash
-            isMatch = true;
-            user.markModified('password');
-            await user.save();
-        }
+        // SAFE Diagnostic Logging: NEVER prints password or hash
+        console.log(`[Auth Diagnostic] Connected DB: "${connectedDb}" | User Found: ${userFound} | Password Field Exists: ${passwordExists} | Bcrypt Match: ${bcryptMatched} | Auth Match: ${isMatch}`);
 
-        if (!isMatch) {
-            return res.status(400).json({ success: false, error: 'Invalid credentials' });
+        if (!user || !isMatch) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid credentials',
+                _diagnostic: {
+                    db: connectedDb,
+                    userFound,
+                    passwordExists,
+                    bcryptMatched
+                }
+            });
         }
 
         const { token } = await createSessionAndToken(user._id, req);

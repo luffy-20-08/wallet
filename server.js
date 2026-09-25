@@ -46,7 +46,19 @@ const connectDB = async () => {
     if (!dbUri) {
         throw new Error('MONGO_URI environment variable is missing. Configure MONGO_URI in your environment or .env file.');
     }
-    await mongoose.connect(dbUri);
+
+    // Safely verify if a database name is explicitly present in the URI path
+    const afterAt = dbUri.split('@')[1] || '';
+    const pathPart = afterAt.split('?')[0];
+    const dbPart = pathPart.includes('/') ? pathPart.substring(pathPart.indexOf('/') + 1).trim() : '';
+
+    const options = {};
+    if (!dbPart) {
+        // Protect against Atlas URIs omitting the db path and defaulting to 'test'
+        options.dbName = 'wallet';
+    }
+
+    await mongoose.connect(dbUri, options);
     const dbName = mongoose.connection.name;
     if (dbName === 'wallet-dev') {
         console.log(`[Database] Connected to DEVELOPMENT database: "${dbName}" (Production "wallet" database is protected)`);
