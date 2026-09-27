@@ -4633,3 +4633,104 @@ body {
     word-break: break-word;
     margin: 0;
 }
+
+/* Screenshot Metadata Bar (Privacy Safe Filename) */
+.screenshot-meta-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+    padding: 6px 10px;
+    background: rgba(169, 112, 255, 0.08);
+    border: 1px solid rgba(169, 112, 255, 0.2);
+    border-radius: var(--radius-sm);
+    font-size: 0.72rem;
+}
+
+.screenshot-meta-bar .meta-label {
+    color: var(--primary-purple);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+}
+
+.screenshot-meta-bar .meta-filename {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    color: var(--income-teal);
+    font-size: 0.72rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* History Row Receipt Button */
+.h-receipt-btn {
+    background: rgba(169, 112, 255, 0.12);
+    border: 1px solid rgba(169, 112, 255, 0.25);
+    color: var(--primary-purple);
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.78rem;
+    margin-right: 6px;
+    transition: all var(--transition-fast);
+}
+
+.h-receipt-btn:hover {
+    background: var(--primary-purple);
+    color: #FFFFFF;
+    transform: scale(1.05);
+}
+
+/* Receipt Modal */
+.receipt-modal-card {
+    max-width: 480px;
+    width: 92%;
+    background: #0F1015;
+    border: 1px solid rgba(169, 112, 255, 0.3);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8), 0 0 30px rgba(169, 112, 255, 0.12);
+}
+
+.receipt-meta-filename {
+    display: block;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.72rem;
+    color: var(--income-teal);
+    margin-top: 2px;
+}
+
+.receipt-modal-body {
+    padding: 16px;
+}
+
+.receipt-img-container {
+    width: 100%;
+    max-height: 55vh;
+    overflow-y: auto;
+    background: #000000;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.receipt-img-container img {
+    max-width: 100%;
+    height: auto;
+    object-fit: contain;
+    border-radius: var(--radius-sm);
+}
+
+.receipt-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}

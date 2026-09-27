@@ -14,7 +14,14 @@ import android.util.Base64;
 import android.util.Log;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+import java.util.UUID;
+import java.util.regex.Pattern;
 
 /**
  * ImagePreprocessor handles high-fidelity image decoding, EXIF rotation correction,
@@ -202,6 +209,64 @@ public class ImagePreprocessor {
         } catch (Exception e) {
             Log.e(TAG, "Failed to compress bitmap to base64 JPEG", e);
             return "";
+        }
+    }
+
+    /**
+     * Generates a neutral Wallet-controlled filename for payment screenshot attachments.
+     * Format: wallet_payment_YYYYMMDD_HHmmss_<short-random-id>.png
+     * CRITICAL PRIVACY: NEVER contains merchant name, person's name, amount, UTR, phone,
+     * account number or any text recognized by OCR.
+     */
+    public static String generateNeutralAttachmentFileName(String extension) {
+        String ext = (extension != null && extension.equalsIgnoreCase("jpg")) ? "jpg" : "png";
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US);
+        String timestamp = sdf.format(new Date());
+        String randomHex = UUID.randomUUID().toString().replace("-", "").substring(0, 4);
+        String fileName = "wallet_payment_" + timestamp + "_" + randomHex + "." + ext;
+
+        if (!isSafeStorageFileName(fileName)) {
+            fileName = "wallet_payment_" + System.currentTimeMillis() + "_" + randomHex + ".png";
+        }
+        return fileName;
+    }
+
+    /**
+     * Validates that the filename contains no dangerous characters for Android storage.
+     * Must contain NO: / \ : * ? " < > | \r \n
+     */
+    public static boolean isSafeStorageFileName(String fileName) {
+        if (fileName == null || fileName.trim().isEmpty()) return false;
+        String forbidden = "[/\\\\:*?\"<>|\\r\\n]";
+        if (Pattern.compile(forbidden).matcher(fileName).find()) {
+            return false;
+        }
+        return fileName.matches("^wallet_payment_\\d{8}_\\d{6}_[a-zA-Z0-9]{4,8}\\.[a-zA-Z0-9]+$");
+    }
+
+    /**
+     * Saves a copy of the screenshot bitmap to private app storage with a neutral Wallet filename.
+     * The user's original image in Gallery is NEVER modified or renamed.
+     */
+    public static File savePrivateAttachmentCopy(Context context, Bitmap bitmap, String neutralFileName) {
+        if (context == null || bitmap == null || neutralFileName == null) return null;
+        try {
+            File attachmentsDir = new File(context.getFilesDir(), "attachments");
+            if (!attachmentsDir.exists()) {
+                attachmentsDir.mkdirs();
+            }
+            File destFile = new File(attachmentsDir, neutralFileName);
+            FileOutputStream fos = new FileOutputStream(destFile);
+            Bitmap.CompressFormat format = neutralFileName.toLowerCase().endsWith(".jpg")
+                    ? Bitmap.CompressFormat.JPEG : Bitmap.CompressFormat.PNG;
+            bitmap.compress(format, 90, fos);
+            fos.flush();
+            fos.close();
+            Log.i(TAG, "Saved private attachment copy under neutral name: " + destFile.getName() + " (" + destFile.length() + " bytes)");
+            return destFile;
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to save private attachment copy", e);
+            return null;
         }
     }
 }

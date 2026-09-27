@@ -45,6 +45,10 @@ const TransactionSchema = new mongoose.Schema({
         type: String,
         default: null
     },
+    attachmentFileName: {
+        type: String,
+        default: null
+    },
     paymentMethod: {
         type: String,
         default: 'UPI'

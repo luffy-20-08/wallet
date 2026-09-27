@@ -17,6 +17,7 @@ import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -78,6 +79,11 @@ public class OcrPipeline {
 
                 // Generate base64 JPEG from original for receipt preview and attachment
                 String base64Image = ImagePreprocessor.bitmapToBase64Jpeg(originalBitmap, 85);
+
+                // PRIVACY REQUIREMENT: Generate neutral Wallet-controlled filename
+                // MUST NEVER be derived from OCR content (no merchant, amount, UTR, etc.)
+                String neutralFileName = ImagePreprocessor.generateNeutralAttachmentFileName("png");
+                File privateAttachment = ImagePreprocessor.savePrivateAttachmentCopy(context, originalBitmap, neutralFileName);
 
                 List<Text> passResults = new ArrayList<>();
                 List<Integer> passesRun = new ArrayList<>();
@@ -146,6 +152,10 @@ public class OcrPipeline {
                 JSONObject structuredPayload = new JSONObject();
                 structuredPayload.put("type", "image");
                 structuredPayload.put("imageBase64", base64Image);
+                structuredPayload.put("attachmentFileName", neutralFileName);
+                if (privateAttachment != null) {
+                    structuredPayload.put("attachmentPath", privateAttachment.getAbsolutePath());
+                }
                 structuredPayload.put("source", "android_mlkit_ocr");
                 structuredPayload.put("timestamp", System.currentTimeMillis());
                 structuredPayload.put("accompanyingText", accompanyingText != null ? accompanyingText : "");

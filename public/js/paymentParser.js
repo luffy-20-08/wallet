@@ -979,6 +979,40 @@
         };
     }
 
+    /**
+     * Generates a neutral Wallet-controlled attachment filename.
+     * CRITICAL PRIVACY: The filename must NEVER be derived from OCR content
+     * (no merchant, person's name, amount, UTR, phone, account number, or OCR text).
+     * Format: wallet_payment_YYYYMMDD_HHmmss_<short-random-id>.png
+     * Example: wallet_payment_20260927_113045_a7f3.png
+     */
+    function generateNeutralAttachmentFileName(date = new Date(), extension = 'png') {
+        const d = (date instanceof Date && !isNaN(date.getTime())) ? date : new Date();
+        const pad = (n) => String(n).padStart(2, '0');
+        const yyyy = d.getFullYear();
+        const MM = pad(d.getMonth() + 1);
+        const dd = pad(d.getDate());
+        const HH = pad(d.getHours());
+        const mm = pad(d.getMinutes());
+        const ss = pad(d.getSeconds());
+        const randomHex = Math.floor(Math.random() * 0xffff).toString(16).padStart(4, '0');
+        const cleanExt = (extension || 'png').toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
+        return `wallet_payment_${yyyy}${MM}${dd}_${HH}${mm}${ss}_${randomHex}.${cleanExt}`;
+    }
+
+    /**
+     * Validates that a filename contains no forbidden characters for Android storage
+     * and adheres strictly to the neutral Wallet-controlled privacy format.
+     * Forbidden: / \ : * ? " < > | \n \r
+     */
+    function isSafeStorageFileName(fileName) {
+        if (!fileName || typeof fileName !== 'string') return false;
+        // Check forbidden characters
+        if (/[\/\\:\*\?"<>\|\r\n]/.test(fileName)) return false;
+        // Preferred neutral format: wallet_payment_YYYYMMDD_HHmmss_<id>.ext
+        return /^wallet_payment_\d{8}_\d{6}_[a-z0-9]{4,8}\.[a-z0-9]+$/i.test(fileName);
+    }
+
     return {
         parsePaymentText,
         extractAmountCandidates,
@@ -991,6 +1025,8 @@
         inferCategory,
         detectProvider,
         isValidCalendarDate,
-        formatDateISO
+        formatDateISO,
+        generateNeutralAttachmentFileName,
+        isSafeStorageFileName
     };
 }));

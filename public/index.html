@@ -1182,6 +1182,10 @@
                     <div class="screenshot-img-container" id="screenshot-img-container">
                         <img id="import-screenshot-img" src="" alt="Payment Screenshot Receipt" />
                     </div>
+                    <div class="screenshot-meta-bar" id="screenshot-meta-bar">
+                        <span class="meta-label"><i class="fa-solid fa-shield-halved"></i> Privacy-Safe Stored Attachment:</span>
+                        <span id="import-attachment-filename" class="meta-filename">wallet_payment_...png</span>
+                    </div>
                 </div>
 
                 <!-- ================= CARD VIEW: PAYMENT DETECTED ================= -->
@@ -1418,6 +1422,33 @@
                         <div class="diag-section-title">Raw Extracted Text</div>
                         <pre class="diag-json" id="diag-raw-text"></pre>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Receipt View Modal -->
+    <div id="receipt-modal" class="modal-backdrop" style="display: none;">
+        <div class="modal-card receipt-modal-card">
+            <div class="modal-header">
+                <div class="modal-header-left">
+                    <div class="modal-icon-badge"><i class="fa-solid fa-receipt"></i></div>
+                    <div>
+                        <h3 class="modal-title">Payment Screenshot Attachment</h3>
+                        <span id="receipt-modal-filename" class="receipt-meta-filename">wallet_payment_...png</span>
+                    </div>
+                </div>
+                <button type="button" class="btn-modal-close" id="btn-close-receipt-modal">&times;</button>
+            </div>
+            <div class="modal-body receipt-modal-body">
+                <div class="receipt-img-container">
+                    <img id="receipt-modal-img" src="" alt="Transaction Payment Screenshot" />
+                </div>
+                <div class="receipt-modal-actions">
+                    <button type="button" class="btn-cancel-clean" id="btn-close-receipt-bottom">Close</button>
+                    <a id="btn-download-receipt" class="btn-primary-purple" download="wallet_payment_attachment.png" href="#">
+                        <i class="fa-solid fa-download"></i> Download Attachment
+                    </a>
                 </div>
             </div>
         </div>

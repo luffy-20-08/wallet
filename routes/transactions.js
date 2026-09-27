@@ -231,6 +231,7 @@ router.post('/', protect, async (req, res) => {
             year,
             referenceId,
             paymentScreenshot,
+            attachmentFileName,
             paymentMethod
         } = req.body;
 
@@ -264,6 +265,27 @@ router.post('/', protect, async (req, res) => {
             });
         }
 
+        // PRIVACY ENFORCEMENT: Screenshot Attachment Filename
+        // The filename MUST be neutral (e.g. wallet_payment_YYYYMMDD_HHmmss_a7f3.png)
+        // and NEVER derived from OCR content (no merchant, amount, UTR, phone, or account number).
+        let safeAttachmentName = null;
+        if (paymentScreenshot) {
+            const forbiddenCharsRegex = /[\/\\:\*\?"<>\|\r\n]/;
+            if (attachmentFileName && typeof attachmentFileName === 'string' &&
+                !forbiddenCharsRegex.test(attachmentFileName) &&
+                !attachmentFileName.includes('..') &&
+                /^wallet_payment_\d{8}_\d{6}_[a-zA-Z0-9]{4,8}\.[a-zA-Z0-9]+$/i.test(attachmentFileName.trim())) {
+                safeAttachmentName = attachmentFileName.trim();
+            } else {
+                // Generate neutral Wallet-controlled filename fallback
+                const now = new Date();
+                const pad = (n) => String(n).padStart(2, '0');
+                const ts = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+                const rand = Math.floor(Math.random() * 0xffff).toString(16).padStart(4, '0');
+                safeAttachmentName = `wallet_payment_${ts}_${rand}.png`;
+            }
+        }
+
         const transaction = await Transaction.create({
             text,
             amount,
@@ -274,6 +296,7 @@ router.post('/', protect, async (req, res) => {
             year: year !== undefined ? year : parsedDate.getFullYear(),
             referenceId: referenceId || null,
             paymentScreenshot: paymentScreenshot || null,
+            attachmentFileName: safeAttachmentName,
             paymentMethod: paymentMethod || 'UPI',
             user: req.user.id
         });
@@ -402,6 +425,47 @@ router.delete('/permanent/:id', protect, async (req, res) => {
             data: {}
         });
     } catch (err) {
+        return res.status(500).json({
+            success: false,
+            error: 'Server Error'
+        });
+    }
+});
+
+// @desc    Download/view transaction screenshot attachment with neutral filename
+// @route   GET /api/transactions/:id/attachment
+// @access  Private
+router.get('/:id/attachment', protect, async (req, res) => {
+    try {
+        const transaction = await Transaction.findOne({
+            _id: req.params.id,
+            user: req.user.id,
+            isDeleted: false
+        });
+
+        if (!transaction || !transaction.paymentScreenshot) {
+            return res.status(404).json({
+                success: false,
+                error: 'Attachment not found'
+            });
+        }
+
+        const base64Data = transaction.paymentScreenshot;
+        const matches = base64Data.match(/^data:image\/([a-zA-Z0-9]+);base64,(.+)$/);
+        if (!matches) {
+            return res.status(400).json({ success: false, error: 'Invalid attachment data' });
+        }
+
+        const ext = matches[1].toLowerCase() === 'jpeg' ? 'jpg' : matches[1].toLowerCase();
+        const imgBuffer = Buffer.from(matches[2], 'base64');
+        const downloadName = transaction.attachmentFileName || `wallet_payment_attachment.${ext}`;
+
+        res.setHeader('Content-Type', `image/${matches[1]}`);
+        res.setHeader('Content-Disposition', `attachment; filename="${downloadName}"`);
+        res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
+        return res.status(200).send(imgBuffer);
+    } catch (err) {
+        console.error("Error in GET /api/transactions/:id/attachment:", err);
         return res.status(500).json({
             success: false,
             error: 'Server Error'

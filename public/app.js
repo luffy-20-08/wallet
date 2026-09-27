@@ -1900,6 +1900,11 @@ function renderHistoryDOM() {
                     ${isExp ? '-' : '+'}${formatCurrency(transaction.amount)}
                 </div>
                 <div class="h-col-actions">
+                    ${transaction.paymentScreenshot ? `
+                        <button type="button" class="h-receipt-btn" onclick="openReceiptModal('${transaction._id}')" title="View Payment Screenshot">
+                            <i class="fa-solid fa-receipt"></i>
+                        </button>
+                    ` : ''}
                     <button type="button" class="h-action-btn" onclick="removeTransaction('${transaction._id}')" title="Move to Recycle Bin">
                         <i class="fa-regular fa-trash-can"></i>
                     </button>
@@ -3564,6 +3569,7 @@ function initExportUI() {
 // IMPORT PAYMENT CONTROLLER (NATIVE OCR CONFIRMATION)
 // ===================================================
 let activeImportScreenshotBase64 = null;
+let activeImportAttachmentFileName = null;
 let activeImportType = 'expense';
 let activeParsedPayment = null;
 
@@ -3599,6 +3605,7 @@ const btnBackToCard = document.getElementById('btn-back-to-card');
 // Screenshot preview
 const importScreenshotPreviewWrap = document.getElementById('import-screenshot-preview-wrap');
 const importScreenshotImg = document.getElementById('import-screenshot-img');
+const importAttachmentFilenameEl = document.getElementById('import-attachment-filename');
 const btnToggleScreenshot = document.getElementById('btn-toggle-screenshot');
 const screenshotImgContainer = document.getElementById('screenshot-img-container');
 
@@ -3640,6 +3647,7 @@ function closeImportModal() {
         importPaymentModal.classList.remove('active');
     }
     activeImportScreenshotBase64 = null;
+    activeImportAttachmentFileName = null;
     activeParsedPayment = null;
 }
 
@@ -3685,13 +3693,27 @@ async function handleWalletShareIntent(payload) {
     const rawText = payload.text || '';
     const isImage = (payload.type === 'image' || !!payload.imageBase64);
 
-    // Store screenshot
+    // Store screenshot & neutral privacy filename
     if (payload.imageBase64) {
         activeImportScreenshotBase64 = payload.imageBase64;
         if (importScreenshotImg) importScreenshotImg.src = payload.imageBase64;
         if (importScreenshotPreviewWrap) importScreenshotPreviewWrap.style.display = 'block';
+
+        // PRIVACY ENFORCEMENT: Never derive filename from OCR content or sensitive source URI
+        if (payload.attachmentFileName && window.PaymentParser && window.PaymentParser.isSafeStorageFileName(payload.attachmentFileName)) {
+            activeImportAttachmentFileName = payload.attachmentFileName;
+        } else if (window.PaymentParser && window.PaymentParser.generateNeutralAttachmentFileName) {
+            activeImportAttachmentFileName = window.PaymentParser.generateNeutralAttachmentFileName(new Date(), 'png');
+        } else {
+            activeImportAttachmentFileName = `wallet_payment_${Date.now()}.png`;
+        }
+
+        if (importAttachmentFilenameEl) {
+            importAttachmentFilenameEl.textContent = activeImportAttachmentFileName;
+        }
     } else {
         activeImportScreenshotBase64 = null;
+        activeImportAttachmentFileName = null;
         if (importScreenshotPreviewWrap) importScreenshotPreviewWrap.style.display = 'none';
     }
 
@@ -4020,6 +4042,7 @@ async function submitImportPayment() {
         year: selectedDate.getFullYear(),
         referenceId: (importRef && importRef.value.trim()) ? importRef.value.trim() : null,
         paymentScreenshot: activeImportScreenshotBase64 || null,
+        attachmentFileName: activeImportScreenshotBase64 ? (activeImportAttachmentFileName || (window.PaymentParser ? window.PaymentParser.generateNeutralAttachmentFileName(new Date(), 'png') : `wallet_payment_${Date.now()}.png`)) : null,
         paymentMethod: (importMethod && importMethod.value.trim()) ? importMethod.value.trim() : 'UPI'
     };
 
@@ -4239,6 +4262,12 @@ function initImportPaymentUI() {
             if (e && e.preventDefault) e.preventDefault();
             return;
         }
+        const receiptModalEl = document.getElementById('receipt-modal');
+        if (receiptModalEl && receiptModalEl.style.display !== 'none') {
+            closeReceiptModal();
+            if (e && e.preventDefault) e.preventDefault();
+            return;
+        }
         if (importForm && importForm.style.display !== 'none') {
             showCardView();
             if (e && e.preventDefault) e.preventDefault();
@@ -4251,9 +4280,59 @@ function initImportPaymentUI() {
         }
     });
 
+    // Wire Receipt Modal Close Buttons
+    const btnCloseReceiptModal = document.getElementById('btn-close-receipt-modal');
+    const btnCloseReceiptBottom = document.getElementById('btn-close-receipt-bottom');
+    const receiptModalEl = document.getElementById('receipt-modal');
+    if (btnCloseReceiptModal) btnCloseReceiptModal.addEventListener('click', closeReceiptModal);
+    if (btnCloseReceiptBottom) btnCloseReceiptBottom.addEventListener('click', closeReceiptModal);
+    if (receiptModalEl) {
+        receiptModalEl.addEventListener('click', (e) => {
+            if (e.target === receiptModalEl) closeReceiptModal();
+        });
+    }
+
     // Check for pending share intent on startup
     checkPendingShareIntent();
 }
+
+/**
+ * View receipt screenshot modal with neutral attachment filename
+ */
+function openReceiptModal(id) {
+    const tx = (typeof transactions !== 'undefined') ? transactions.find(t => t._id === id) : null;
+    if (!tx || !tx.paymentScreenshot) return;
+
+    const receiptModal = document.getElementById('receipt-modal');
+    const receiptImg = document.getElementById('receipt-modal-img');
+    const receiptFilename = document.getElementById('receipt-modal-filename');
+    const downloadBtn = document.getElementById('btn-download-receipt');
+
+    const fileName = tx.attachmentFileName || (window.PaymentParser ? window.PaymentParser.generateNeutralAttachmentFileName(new Date(tx.date || tx.createdAt), 'png') : `wallet_payment_${tx._id}.png`);
+
+    if (receiptImg) receiptImg.src = tx.paymentScreenshot;
+    if (receiptFilename) receiptFilename.textContent = fileName;
+    if (downloadBtn) {
+        downloadBtn.href = tx.paymentScreenshot;
+        downloadBtn.download = fileName;
+        downloadBtn.onclick = function (e) {
+            if (isNative && typeof window.AndroidNativeExport !== 'undefined' && typeof window.AndroidNativeExport.saveAndShareFile === 'function') {
+                e.preventDefault();
+                window.AndroidNativeExport.saveAndShareFile(fileName, tx.paymentScreenshot, 'image/png', 'Payment Screenshot');
+            }
+        };
+    }
+
+    if (receiptModal) receiptModal.style.display = 'flex';
+}
+
+function closeReceiptModal() {
+    const receiptModal = document.getElementById('receipt-modal');
+    if (receiptModal) receiptModal.style.display = 'none';
+}
+
+window.openReceiptModal = openReceiptModal;
+window.closeReceiptModal = closeReceiptModal;
 
 /**
  * Check if a share intent arrived before page load or during login
