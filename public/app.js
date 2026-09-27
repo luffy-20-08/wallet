@@ -3561,10 +3561,11 @@ function initExportUI() {
 }
 
 // ===================================================
-// IMPORT PAYMENT CONTROLLER (PHONEPE / SHARE INTENT)
+// IMPORT PAYMENT CONTROLLER (NATIVE OCR CONFIRMATION)
 // ===================================================
 let activeImportScreenshotBase64 = null;
 let activeImportType = 'expense';
+let activeParsedPayment = null;
 
 const importPaymentModal = document.getElementById('import-payment-modal');
 const closeImportBtn = document.getElementById('close-import-btn');
@@ -3572,19 +3573,49 @@ const btnCancelImport = document.getElementById('btn-cancel-import');
 const btnSaveImport = document.getElementById('btn-save-import');
 const importForm = document.getElementById('import-payment-form');
 const importBadgeSource = document.getElementById('import-badge-source');
+const importConfidenceBadge = document.getElementById('import-confidence-badge');
 const importDuplicateAlert = document.getElementById('import-duplicate-alert');
 const importDuplicateDesc = document.getElementById('import-duplicate-desc');
 
+// Card View Elements
+const importCardView = document.getElementById('import-card-view');
+const cardProviderPill = document.getElementById('card-provider-pill');
+const cardMerchantVal = document.getElementById('card-merchant-val');
+const cardAmountVal = document.getElementById('card-amount-val');
+const cardAmountStatus = document.getElementById('card-amount-status');
+const cardDateVal = document.getElementById('card-date-val');
+const cardDateStatus = document.getElementById('card-date-status');
+const cardTimeVal = document.getElementById('card-time-val');
+const cardCategoryVal = document.getElementById('card-category-val');
+const cardCategoryStatus = document.getElementById('card-category-status');
+const cardCategoryQuickSelectWrap = document.getElementById('card-category-quick-select-wrap');
+const cardCategoryQuickSelect = document.getElementById('card-category-quick-select');
+const cardUtrWrap = document.getElementById('card-utr-wrap');
+const cardUtrVal = document.getElementById('card-utr-val');
+const btnCardConfirm = document.getElementById('btn-card-confirm');
+const btnCardEdit = document.getElementById('btn-card-edit');
+const btnBackToCard = document.getElementById('btn-back-to-card');
+
+// Screenshot preview
 const importScreenshotPreviewWrap = document.getElementById('import-screenshot-preview-wrap');
 const importScreenshotImg = document.getElementById('import-screenshot-img');
 const btnToggleScreenshot = document.getElementById('btn-toggle-screenshot');
 const screenshotImgContainer = document.getElementById('screenshot-img-container');
 
-const importRawTextWrap = document.getElementById('import-raw-text-wrap');
-const importRawToggle = document.getElementById('import-raw-toggle');
-const importRawText = document.getElementById('import-raw-text');
-const importRawChevron = document.getElementById('import-raw-chevron');
+// Diagnostic Drawer
+const btnOcrDiagnostic = document.getElementById('btn-ocr-diagnostic');
+const importDiagnosticDrawer = document.getElementById('import-diagnostic-drawer');
+const btnCloseDiagnostic = document.getElementById('btn-close-diagnostic');
+const diagProvider = document.getElementById('diag-provider');
+const diagPasses = document.getElementById('diag-passes');
+const diagAmountScore = document.getElementById('diag-amount-score');
+const diagDateScore = document.getElementById('diag-date-score');
+const diagSelectedJson = document.getElementById('diag-selected-json');
+const diagAmountCandidates = document.getElementById('diag-amount-candidates');
+const diagDateCandidates = document.getElementById('diag-date-candidates');
+const diagRawText = document.getElementById('diag-raw-text');
 
+// Form Inputs
 const importAmount = document.getElementById('import-amount');
 const importMerchant = document.getElementById('import-merchant');
 const importCategory = document.getElementById('import-category');
@@ -3609,6 +3640,17 @@ function closeImportModal() {
         importPaymentModal.classList.remove('active');
     }
     activeImportScreenshotBase64 = null;
+    activeParsedPayment = null;
+}
+
+function showCardView() {
+    if (importCardView) importCardView.style.display = 'block';
+    if (importForm) importForm.style.display = 'none';
+}
+
+function showEditView() {
+    if (importCardView) importCardView.style.display = 'none';
+    if (importForm) importForm.style.display = 'block';
 }
 
 function setImportType(type) {
@@ -3643,18 +3685,7 @@ async function handleWalletShareIntent(payload) {
     const rawText = payload.text || '';
     const isImage = (payload.type === 'image' || !!payload.imageBase64);
 
-    // Source badge
-    if (importBadgeSource) {
-        let sourceLabel = 'Shared Payment';
-        const lower = rawText.toLowerCase();
-        if (lower.includes('phonepe')) sourceLabel = 'PhonePe Payment';
-        else if (lower.includes('gpay') || lower.includes('google pay')) sourceLabel = 'Google Pay';
-        else if (lower.includes('paytm')) sourceLabel = 'Paytm UPI';
-        else if (isImage) sourceLabel = 'Payment Screenshot';
-        importBadgeSource.innerHTML = `<i class="fa-solid fa-bolt" style="color: var(--primary-purple);"></i> ${sourceLabel}`;
-    }
-
-    // Screenshot preview
+    // Store screenshot
     if (payload.imageBase64) {
         activeImportScreenshotBase64 = payload.imageBase64;
         if (importScreenshotImg) importScreenshotImg.src = payload.imageBase64;
@@ -3664,105 +3695,180 @@ async function handleWalletShareIntent(payload) {
         if (importScreenshotPreviewWrap) importScreenshotPreviewWrap.style.display = 'none';
     }
 
-    // Raw text collapsible
-    if (rawText && importRawTextWrap && importRawText) {
-        importRawText.textContent = rawText;
-        importRawTextWrap.style.display = 'block';
-    } else if (importRawTextWrap) {
-        importRawTextWrap.style.display = 'none';
-    }
-
-    // Parse payment text using paymentParser.js
+    // Parse payment text / structured OCR using paymentParser.js
     let parsed = {
         amount: null,
         merchant: '',
-        date: new Date().toISOString().split('T')[0],
+        date: null,
         time: '',
         referenceId: '',
         note: '',
         type: 'expense',
         paymentMethod: 'UPI',
         category: '',
-        needsCategorySelection: true
+        needsCategorySelection: true,
+        provider: 'UPI',
+        overallConfidence: 'NEEDS_CONFIRMATION',
+        requiresConfirmation: true,
+        requiresAmountConfirmation: true,
+        requiresDateConfirmation: true
     };
 
     if (window.PaymentParser && window.PaymentParser.parsePaymentText) {
-        parsed = window.PaymentParser.parsePaymentText(rawText);
+        parsed = window.PaymentParser.parsePaymentText(payload);
     }
+    activeParsedPayment = parsed;
 
-    // Open the modal FIRST so the DOM element is guaranteed to exist
-    openImportModal();
-
-    // 1. Verify actual parsed object on Android (Requirement 1)
     console.log('[WalletShare] FINAL PARSED RESULT:', parsed);
-    console.log('[WalletShare] parsed amount:', parsed.amount);
 
-    // 2. Verify actual HTML element (Requirement 2)
-    const amountInput = document.getElementById('import-amount');
-    console.log('[WalletShare] amount input:', amountInput);
-    console.log(
-        '[WalletShare] amount input value BEFORE:',
-        amountInput ? amountInput.value : undefined
-    );
+    // Update Header Source Badge
+    if (importBadgeSource) {
+        importBadgeSource.innerHTML = `<i class="fa-solid fa-bolt" style="color: var(--primary-purple);"></i> ${escapeHTML(parsed.paymentMethod)}`;
+    }
 
-    // 3. Force parsed amount into the input AFTER modal exists (Requirement 3 & 8)
+    // Update Confidence Badge
+    if (importConfidenceBadge) {
+        if (parsed.overallConfidence === 'HIGH') {
+            importConfidenceBadge.className = 'confidence-pill confidence-high';
+            importConfidenceBadge.innerHTML = '<i class="fa-solid fa-shield-check"></i> High Confidence';
+        } else if (parsed.overallConfidence === 'MEDIUM') {
+            importConfidenceBadge.className = 'confidence-pill confidence-medium';
+            importConfidenceBadge.innerHTML = '<i class="fa-solid fa-circle-check"></i> Verified';
+        } else {
+            importConfidenceBadge.className = 'confidence-pill confidence-warning';
+            importConfidenceBadge.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Please Confirm';
+        }
+    }
+
+    // Populate Card View
+    if (cardProviderPill) cardProviderPill.textContent = parsed.provider || 'UPI';
+    if (cardMerchantVal) cardMerchantVal.textContent = parsed.merchant || 'Payee not detected';
+
+    // Amount in card
+    if (cardAmountVal) {
+        if (parsed.amount != null) {
+            cardAmountVal.textContent = `₹${Math.abs(Number(parsed.amount)).toFixed(2)}`;
+            cardAmountVal.style.color = parsed.requiresAmountConfirmation ? '#FFB800' : 'var(--income-teal)';
+        } else {
+            cardAmountVal.textContent = '₹0.00';
+            cardAmountVal.style.color = '#F87171';
+        }
+    }
+    if (cardAmountStatus) {
+        cardAmountStatus.style.display = (parsed.requiresAmountConfirmation || parsed.amount == null) ? 'inline-block' : 'none';
+    }
+
+    // Date & Time in card
+    if (cardDateVal) {
+        if (parsed.date) {
+            cardDateVal.textContent = formatDateMedium(parsed.date);
+            cardDateVal.style.color = 'var(--text-main)';
+        } else {
+            cardDateVal.textContent = 'Not detected';
+            cardDateVal.style.color = '#F87171';
+        }
+    }
+    if (cardDateStatus) {
+        cardDateStatus.style.display = (!parsed.date || parsed.requiresDateConfirmation) ? 'inline-block' : 'none';
+    }
+    if (cardTimeVal) {
+        cardTimeVal.textContent = parsed.time || '--';
+    }
+
+    // Category in card
+    if (cardCategoryVal && cardCategoryStatus) {
+        if (parsed.category) {
+            const catInfo = getCategoryInfo(parsed.category);
+            cardCategoryVal.textContent = catInfo.label;
+            cardCategoryStatus.className = 'category-status-pill detected';
+            cardCategoryStatus.innerHTML = `<i class="fa-solid fa-check"></i> Detected`;
+            if (cardCategoryQuickSelectWrap) cardCategoryQuickSelectWrap.style.display = 'none';
+        } else {
+            cardCategoryVal.textContent = 'Select Category';
+            cardCategoryStatus.className = 'category-status-pill needs-selection';
+            cardCategoryStatus.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> Required`;
+            if (cardCategoryQuickSelectWrap) {
+                cardCategoryQuickSelectWrap.style.display = 'block';
+                if (cardCategoryQuickSelect) cardCategoryQuickSelect.value = '';
+            }
+        }
+    }
+
+    // UTR in card
+    if (cardUtrWrap && cardUtrVal) {
+        if (parsed.referenceId) {
+            cardUtrVal.textContent = parsed.referenceId;
+            cardUtrWrap.style.display = 'block';
+        } else {
+            cardUtrWrap.style.display = 'none';
+        }
+    }
+
+    // Populate Detailed Form Inputs
+    if (importAmount) {
+        importAmount.value = parsed.amount != null ? String(Math.abs(Number(parsed.amount))) : '';
+        importAmount.style.borderColor = parsed.requiresAmountConfirmation ? 'rgba(255, 184, 0, 0.7)' : '';
+    }
     const importAmountHint = document.getElementById('import-amount-hint');
-    if (amountInput && parsed.amount != null) {
-        amountInput.value = String(Math.abs(Number(parsed.amount)));
-        amountInput.dispatchEvent(new Event('input', { bubbles: true }));
-        amountInput.dispatchEvent(new Event('change', { bubbles: true }));
-        amountInput.style.borderColor = '';
-        if (importAmountHint) importAmountHint.style.display = 'none';
-    } else if (amountInput) {
-        amountInput.value = '';
-        amountInput.placeholder = 'Please enter amount (e.g. 250)';
-        amountInput.style.borderColor = 'rgba(239, 68, 68, 0.7)';
-        if (importAmountHint) importAmountHint.style.display = 'inline-block';
+    if (importAmountHint) {
+        importAmountHint.style.display = (parsed.requiresAmountConfirmation || parsed.amount == null) ? 'inline-block' : 'none';
     }
 
-    console.log(
-        '[WalletShare] amount input value AFTER:',
-        amountInput ? amountInput.value : undefined
-    );
-
-    // 7. Temporary visible debug line inside the Import Payment modal (Requirement 7)
-    const debugAmountEl = document.getElementById('import-debug-detected-amount');
-    if (debugAmountEl) {
-        debugAmountEl.textContent = (parsed.amount != null) ? `₹${parsed.amount}` : 'undefined';
-    }
-
-    // Populate remaining form fields
     if (importMerchant) importMerchant.value = parsed.merchant || '';
-    if (importDate) importDate.value = parsed.date || new Date().toISOString().split('T')[0];
+    if (importDate) {
+        // NEVER default to today's date! If null, keep empty string
+        importDate.value = parsed.date || '';
+        importDate.style.borderColor = (!parsed.date || parsed.requiresDateConfirmation) ? 'rgba(255, 184, 0, 0.7)' : '';
+    }
+    const importDateHint = document.getElementById('import-date-hint');
+    if (importDateHint) {
+        importDateHint.style.display = (!parsed.date || parsed.requiresDateConfirmation) ? 'inline-block' : 'none';
+    }
+
     if (importTime) importTime.value = parsed.time || '';
-    if (importMethod) importMethod.value = parsed.paymentMethod || 'PhonePe UPI';
+    if (importMethod) importMethod.value = parsed.paymentMethod || 'UPI';
     if (importRef) importRef.value = parsed.referenceId || '';
     if (importNote) importNote.value = parsed.note || '';
 
     setImportType(parsed.type || 'expense');
 
-    // Category handling (Requirement 8 & 9)
     if (importCategory) {
-        if (parsed.category) {
-            importCategory.value = parsed.category;
-            const catInfo = getCategoryInfo(parsed.category);
-            if (importCategoryStatus) {
+        importCategory.value = parsed.category || '';
+        if (importCategoryStatus) {
+            if (parsed.category) {
+                const catInfo = getCategoryInfo(parsed.category);
                 importCategoryStatus.className = 'category-status-pill detected';
                 importCategoryStatus.innerHTML = `<i class="fa-solid fa-check"></i> ${catInfo.label} detected`;
-            }
-            if (importCategoryTip) importCategoryTip.style.display = 'none';
-        } else {
-            importCategory.value = '';
-            if (importCategoryStatus) {
+                if (importCategoryTip) importCategoryTip.style.display = 'none';
+            } else {
                 importCategoryStatus.className = 'category-status-pill needs-selection';
                 importCategoryStatus.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> Select Category`;
+                if (importCategoryTip) importCategoryTip.style.display = 'flex';
             }
-            if (importCategoryTip) importCategoryTip.style.display = 'flex';
         }
     }
 
+    // Populate Developer Diagnostic Inspector
+    if (parsed.diagnostic) {
+        if (diagProvider) diagProvider.textContent = parsed.diagnostic.provider || '--';
+        if (diagPasses) diagPasses.textContent = (parsed.diagnostic.passesRun || [1]).join(', ');
+        if (diagAmountScore) diagAmountScore.textContent = `${parsed.amountScore || 0}/100 (${parsed.amountConfidence || '--'})`;
+        if (diagDateScore) diagDateScore.textContent = `${parsed.dateScore || 0}/100 (${parsed.dateConfidence || '--'})`;
+        if (diagSelectedJson) diagSelectedJson.textContent = JSON.stringify(parsed.diagnostic.selected || {}, null, 2);
+        if (diagAmountCandidates) diagAmountCandidates.textContent = JSON.stringify(parsed.diagnostic.amountCandidates || [], null, 2);
+        if (diagDateCandidates) diagDateCandidates.textContent = JSON.stringify(parsed.diagnostic.dateCandidates || [], null, 2);
+        if (diagRawText) diagRawText.textContent = rawText;
+    }
+
+    // Default to Card View
+    showCardView();
+    if (importDiagnosticDrawer) importDiagnosticDrawer.style.display = 'none';
+
     // Duplicate Detection Check
     await checkForDuplicatePayment(parsed);
+
+    // Open Modal
+    openImportModal();
 }
 
 // Make handleWalletShareIntent accessible to Android native bridge
@@ -3829,6 +3935,185 @@ function showDuplicateWarning(tx) {
     importDuplicateAlert.style.display = 'flex';
 }
 
+/**
+ * Submit imported payment with duplicate check, offline queueing, and attachment
+ */
+async function submitImportPayment() {
+    // Sync category from quick select if applicable
+    if (cardCategoryQuickSelectWrap && cardCategoryQuickSelectWrap.style.display !== 'none' && cardCategoryQuickSelect && cardCategoryQuickSelect.value) {
+        if (importCategory) importCategory.value = cardCategoryQuickSelect.value;
+    }
+
+    // 1. Amount Validation
+    const amountVal = parseFloat(importAmount ? importAmount.value : '');
+    if (isNaN(amountVal) || amountVal <= 0) {
+        showEditView();
+        if (importAmount) {
+            importAmount.focus();
+            importAmount.style.borderColor = 'var(--expense-coral)';
+        }
+        alert('Please enter or verify the payment amount.');
+        return;
+    }
+
+    // 2. Date Validation (STRICT: Never allow silent missing date)
+    const dateVal = importDate ? importDate.value : '';
+    if (!dateVal) {
+        showEditView();
+        if (importDate) {
+            importDate.focus();
+            importDate.style.borderColor = 'var(--expense-coral)';
+        }
+        alert('Transaction date was not detected from screenshot. Please select the date of this payment.');
+        return;
+    }
+
+    // 3. Category Validation
+    if (!importCategory || !importCategory.value) {
+        if (importCategory) {
+            showEditView();
+            importCategory.focus();
+            importCategory.style.borderColor = 'var(--expense-coral)';
+            if (importCategoryTip) importCategoryTip.style.display = 'flex';
+        }
+        alert('Please select a category for this payment.');
+        return;
+    }
+
+    // 4. Merchant Validation
+    const merchantVal = importMerchant ? importMerchant.value.trim() : 'Payment';
+    if (!merchantVal) {
+        showEditView();
+        if (importMerchant) {
+            importMerchant.focus();
+            importMerchant.style.borderColor = 'var(--expense-coral)';
+        }
+        alert('Please enter a merchant or payment description.');
+        return;
+    }
+
+    const finalAmount = activeImportType === 'expense' ? -Math.abs(amountVal) : Math.abs(amountVal);
+    const [y, m, d] = dateVal.split('-').map(Number);
+    const selectedDate = new Date(y, m - 1, d);
+
+    // If time is provided, incorporate into date
+    const timeVal = importTime ? importTime.value.trim() : '';
+    if (timeVal) {
+        const timeMatch = timeVal.match(/(\d{1,2})[:.](\d{2})\s*(am|pm)?/i);
+        if (timeMatch) {
+            let hr = parseInt(timeMatch[1], 10);
+            const mn = parseInt(timeMatch[2], 10);
+            const ampm = timeMatch[3] ? timeMatch[3].toLowerCase() : '';
+            if (ampm === 'pm' && hr < 12) hr += 12;
+            if (ampm === 'am' && hr === 12) hr = 0;
+            selectedDate.setHours(hr, mn, 0, 0);
+        }
+    }
+
+    const txPayload = {
+        text: merchantVal,
+        amount: finalAmount,
+        type: activeImportType,
+        category: importCategory.value,
+        date: selectedDate.toISOString(),
+        month: selectedDate.getMonth(),
+        year: selectedDate.getFullYear(),
+        referenceId: (importRef && importRef.value.trim()) ? importRef.value.trim() : null,
+        paymentScreenshot: activeImportScreenshotBase64 || null,
+        paymentMethod: (importMethod && importMethod.value.trim()) ? importMethod.value.trim() : 'UPI'
+    };
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+        window.location.href = 'login.html';
+        return;
+    }
+
+    if (btnSaveImport) {
+        btnSaveImport.disabled = true;
+        btnSaveImport.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+    }
+    if (btnCardConfirm) {
+        btnCardConfirm.disabled = true;
+        btnCardConfirm.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Adding...';
+    }
+
+    try {
+        const txPostUrl = (typeof window !== 'undefined' && typeof window.apiUrl === 'function')
+            ? window.apiUrl('/api/transactions')
+            : '/api/transactions';
+
+        console.log('[Wallet Share] Submitting POST to:', txPostUrl);
+
+        const res = await fetch(txPostUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(txPayload)
+        });
+
+        const contentType = res.headers.get('content-type') || '';
+        let data = {};
+        if (contentType.includes('application/json')) {
+            data = await res.json();
+        } else {
+            const textResp = await res.text();
+            throw new Error(`Server returned status ${res.status}: ${textResp.substring(0, 100)}`);
+        }
+
+        if (res.status === 409 || data.isDuplicate) {
+            alert(data.error || 'Duplicate transaction: this payment has already been recorded.');
+            return;
+        }
+
+        if (data.success && data.data) {
+            transactions.push(data.data);
+            updateValues();
+            renderHistoryDOM();
+            renderYears();
+            closeImportModal();
+
+            if (typeof showToastNotification === 'function') {
+                showToastNotification({
+                    title: 'Payment Imported',
+                    message: `Successfully recorded ${escapeHTML(txPayload.text)} (${formatCurrency(txPayload.amount)})`,
+                    amount: txPayload.amount,
+                    subName: txPayload.text,
+                    color: activeImportType === 'expense' ? '#FF5C72' : '#00D9C0',
+                    icon: 'fa-solid fa-bolt'
+                });
+            }
+        } else {
+            alert(data.error || 'Failed to save imported transaction');
+        }
+    } catch (err) {
+        console.error('[Wallet Share] Error saving imported payment:', err);
+
+        // Offline Draft Handling
+        try {
+            const draftsStr = localStorage.getItem('offline_transaction_drafts') || '[]';
+            const drafts = JSON.parse(draftsStr);
+            drafts.push({ ...txPayload, queuedAt: Date.now() });
+            localStorage.setItem('offline_transaction_drafts', JSON.stringify(drafts));
+            alert('Network unavailable. Payment saved as an offline draft and will be synced once online.');
+            closeImportModal();
+        } catch (offlineErr) {
+            alert(`Error saving payment: ${err.message || 'Please check server connection'}`);
+        }
+    } finally {
+        if (btnSaveImport) {
+            btnSaveImport.disabled = false;
+            btnSaveImport.innerHTML = '<i class="fa-solid fa-check"></i> Save Transaction';
+        }
+        if (btnCardConfirm) {
+            btnCardConfirm.disabled = false;
+            btnCardConfirm.innerHTML = '<i class="fa-solid fa-check"></i> Confirm & Add';
+        }
+    }
+}
+
 function initImportPaymentUI() {
     if (closeImportBtn) closeImportBtn.addEventListener('click', closeImportModal);
     if (btnCancelImport) btnCancelImport.addEventListener('click', closeImportModal);
@@ -3836,6 +4121,69 @@ function initImportPaymentUI() {
     if (importPaymentModal) {
         importPaymentModal.addEventListener('click', (e) => {
             if (e.target === importPaymentModal) closeImportModal();
+        });
+    }
+
+    // Card buttons
+    if (btnCardEdit) {
+        btnCardEdit.addEventListener('click', () => {
+            showEditView();
+        });
+    }
+
+    if (btnBackToCard) {
+        btnBackToCard.addEventListener('click', () => {
+            // Sync values from edit form to card
+            const amt = parseFloat(importAmount ? importAmount.value : '');
+            if (cardAmountVal) {
+                cardAmountVal.textContent = (!isNaN(amt) && amt > 0) ? `₹${amt.toFixed(2)}` : '₹0.00';
+            }
+            if (cardMerchantVal && importMerchant) {
+                cardMerchantVal.textContent = importMerchant.value.trim() || 'Payee not set';
+            }
+            if (cardDateVal && importDate) {
+                cardDateVal.textContent = importDate.value ? formatDateMedium(importDate.value) : 'Not set';
+            }
+            if (cardTimeVal && importTime) {
+                cardTimeVal.textContent = importTime.value || '--';
+            }
+            if (cardCategoryVal && importCategory && importCategory.value) {
+                cardCategoryVal.textContent = getCategoryInfo(importCategory.value).label;
+                if (cardCategoryQuickSelectWrap) cardCategoryQuickSelectWrap.style.display = 'none';
+            }
+            showCardView();
+        });
+    }
+
+    if (btnCardConfirm) {
+        btnCardConfirm.addEventListener('click', submitImportPayment);
+    }
+
+    if (cardCategoryQuickSelect) {
+        cardCategoryQuickSelect.addEventListener('change', () => {
+            if (cardCategoryQuickSelect.value) {
+                if (importCategory) importCategory.value = cardCategoryQuickSelect.value;
+                const catInfo = getCategoryInfo(cardCategoryQuickSelect.value);
+                if (cardCategoryVal) cardCategoryVal.textContent = catInfo.label;
+                if (cardCategoryStatus) {
+                    cardCategoryStatus.className = 'category-status-pill detected';
+                    cardCategoryStatus.innerHTML = '<i class="fa-solid fa-check"></i> Selected';
+                }
+            }
+        });
+    }
+
+    // Developer OCR Diagnostic Drawer Toggle
+    if (btnOcrDiagnostic && importDiagnosticDrawer) {
+        btnOcrDiagnostic.addEventListener('click', () => {
+            const isHidden = importDiagnosticDrawer.style.display === 'none';
+            importDiagnosticDrawer.style.display = isHidden ? 'block' : 'none';
+        });
+    }
+
+    if (btnCloseDiagnostic && importDiagnosticDrawer) {
+        btnCloseDiagnostic.addEventListener('click', () => {
+            importDiagnosticDrawer.style.display = 'none';
         });
     }
 
@@ -3852,15 +4200,6 @@ function initImportPaymentUI() {
             const isHidden = screenshotImgContainer.style.display === 'none';
             screenshotImgContainer.style.display = isHidden ? 'flex' : 'none';
             btnToggleScreenshot.textContent = isHidden ? 'Hide Preview' : 'Show Preview';
-        });
-    }
-
-    // Toggle raw receipt text
-    if (importRawToggle && importRawText && importRawChevron) {
-        importRawToggle.addEventListener('click', () => {
-            const isHidden = importRawText.style.display === 'none';
-            importRawText.style.display = isHidden ? 'block' : 'none';
-            importRawChevron.className = isHidden ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down';
         });
     }
 
@@ -3889,123 +4228,28 @@ function initImportPaymentUI() {
     if (importForm) {
         importForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-
-            // Validate Category
-            if (!importCategory.value) {
-                importCategory.focus();
-                importCategory.style.borderColor = 'var(--expense-coral)';
-                if (importCategoryTip) importCategoryTip.style.display = 'flex';
-                alert('Please select a category for this transaction.');
-                return;
-            }
-
-            const amountVal = parseFloat(importAmount.value);
-            if (isNaN(amountVal) || amountVal <= 0) {
-                alert('Please enter a valid amount.');
-                return;
-            }
-
-            const finalAmount = activeImportType === 'expense' ? -Math.abs(amountVal) : Math.abs(amountVal);
-            const dateVal = importDate.value;
-            if (!dateVal) {
-                alert('Please select a date.');
-                return;
-            }
-
-            const [y, m, d] = dateVal.split('-').map(Number);
-            const selectedDate = new Date(y, m - 1, d);
-
-            const txPayload = {
-                text: importMerchant.value.trim(),
-                amount: finalAmount,
-                type: activeImportType,
-                category: importCategory.value,
-                date: selectedDate.toISOString(),
-                month: selectedDate.getMonth(),
-                year: selectedDate.getFullYear(),
-                referenceId: importRef ? importRef.value.trim() : null,
-                paymentScreenshot: activeImportScreenshotBase64 || null,
-                paymentMethod: importMethod ? importMethod.value.trim() : 'PhonePe UPI'
-            };
-
-            const token = localStorage.getItem('token');
-            if (!token) {
-                window.location.href = 'login.html';
-                return;
-            }
-
-            if (btnSaveImport) {
-                btnSaveImport.disabled = true;
-                btnSaveImport.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
-            }
-
-            try {
-                const txPostUrl = (typeof window !== 'undefined' && typeof window.apiUrl === 'function')
-                    ? window.apiUrl('/api/transactions')
-                    : '/api/transactions';
-
-                console.log('[Wallet Share] Submitting POST to:', txPostUrl);
-                console.log('[Wallet Share] Request payload:', JSON.stringify(txPayload, null, 2));
-
-                const res = await fetch(txPostUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify(txPayload)
-                });
-
-                console.log('[Wallet Share] Response status:', res.status, res.statusText);
-
-                const contentType = res.headers.get('content-type') || '';
-                let data = {};
-                if (contentType.includes('application/json')) {
-                    data = await res.json();
-                } else {
-                    const textResp = await res.text();
-                    throw new Error(`Server returned status ${res.status}: ${textResp.substring(0, 100)}`);
-                }
-
-                console.log('[Wallet Share] Response data:', data);
-
-                if (res.status === 409 || data.isDuplicate) {
-                    alert(data.error || 'Duplicate transaction: this payment has already been recorded.');
-                    return;
-                }
-
-                if (data.success && data.data) {
-                    transactions.push(data.data);
-                    updateValues();
-                    renderHistoryDOM();
-                    renderYears();
-                    closeImportModal();
-
-                    // Show success toast notification
-                    if (typeof showToastNotification === 'function') {
-                        showToastNotification({
-                            title: 'Payment Imported',
-                            message: `Successfully recorded ${escapeHTML(txPayload.text)} (${formatCurrency(txPayload.amount)})`,
-                            amount: txPayload.amount,
-                            subName: txPayload.text,
-                            color: activeImportType === 'expense' ? '#FF5C72' : '#00D9C0',
-                            icon: 'fa-solid fa-bolt'
-                        });
-                    }
-                } else {
-                    alert(data.error || 'Failed to save imported transaction');
-                }
-            } catch (err) {
-                console.error('[Wallet Share] Error saving imported payment:', err);
-                alert(`Error saving payment: ${err.message || 'Please check server connection'}`);
-            } finally {
-                if (btnSaveImport) {
-                    btnSaveImport.disabled = false;
-                    btnSaveImport.innerHTML = '<i class="fa-solid fa-check"></i> Import & Save';
-                }
-            }
+            await submitImportPayment();
         });
     }
+
+    // Native Android Back Button Navigation Listener
+    document.addEventListener('backbutton', (e) => {
+        if (importDiagnosticDrawer && importDiagnosticDrawer.style.display !== 'none') {
+            importDiagnosticDrawer.style.display = 'none';
+            if (e && e.preventDefault) e.preventDefault();
+            return;
+        }
+        if (importForm && importForm.style.display !== 'none') {
+            showCardView();
+            if (e && e.preventDefault) e.preventDefault();
+            return;
+        }
+        if (importPaymentModal && importPaymentModal.classList.contains('active')) {
+            closeImportModal();
+            if (e && e.preventDefault) e.preventDefault();
+            return;
+        }
+    });
 
     // Check for pending share intent on startup
     checkPendingShareIntent();

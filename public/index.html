@@ -1139,19 +1139,26 @@
         </div>
     </div>
 
-    <!-- ================= IMPORT PAYMENT MODAL (PHONEPE / SHARE INTENT) ================= -->
+    <!-- ================= IMPORT PAYMENT MODAL (NATIVE-GRADE OCR CONFIRMATION) ================= -->
     <div class="modal-overlay" id="import-payment-modal" role="dialog" aria-modal="true" aria-labelledby="import-payment-title">
         <div class="modal-container import-modal-container">
             <div class="modal-header">
                 <div class="import-header-left">
                     <span class="import-badge-source" id="import-badge-source">
-                        <i class="fa-solid fa-bolt" style="color: var(--primary-purple);"></i> Shared Payment
+                        <i class="fa-solid fa-bolt" style="color: var(--primary-purple);"></i> PhonePe UPI
                     </span>
-                    <h2 id="import-payment-title">Import Payment</h2>
+                    <span id="import-confidence-badge" class="confidence-pill confidence-high">
+                        <i class="fa-solid fa-shield-check"></i> High Confidence
+                    </span>
                 </div>
-                <button class="close-modal-btn" id="close-import-btn" aria-label="Close Import Modal">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <button type="button" class="btn-diag-toggle" id="btn-ocr-diagnostic" title="Developer OCR Diagnostics" aria-label="OCR Diagnostics">
+                        <i class="fa-solid fa-microchip"></i>
+                    </button>
+                    <button class="close-modal-btn" id="close-import-btn" aria-label="Close Import Modal">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
             </div>
 
             <div class="modal-body import-modal-body">
@@ -1166,7 +1173,7 @@
                     </div>
                 </div>
 
-                <!-- Screenshot Preview (if image was shared) -->
+                <!-- Screenshot Preview (collapsible) -->
                 <div id="import-screenshot-preview-wrap" class="import-screenshot-wrap" style="display: none;">
                     <div class="screenshot-header">
                         <span class="screenshot-title"><i class="fa-regular fa-image"></i> Payment Screenshot</span>
@@ -1177,21 +1184,109 @@
                     </div>
                 </div>
 
-                <!-- Extracted Raw Text Collapsible (Useful for verification) -->
-                <div id="import-raw-text-wrap" class="import-raw-wrap" style="display: none;">
-                    <div class="import-raw-header" id="import-raw-toggle">
-                        <span><i class="fa-solid fa-receipt"></i> Extracted Receipt Text</span>
-                        <i class="fa-solid fa-chevron-down" id="import-raw-chevron"></i>
+                <!-- ================= CARD VIEW: PAYMENT DETECTED ================= -->
+                <div id="import-card-view" class="payment-detected-card">
+                    <div class="card-detect-header">
+                        <span class="card-detect-title">PAYMENT DETECTED</span>
+                        <span id="card-provider-pill" class="card-provider-pill">PhonePe</span>
                     </div>
-                    <pre id="import-raw-text" class="import-raw-content" style="display: none;"></pre>
+
+                    <!-- Merchant -->
+                    <div class="detect-item">
+                        <span class="detect-label">Merchant / Payee</span>
+                        <div class="detect-val-wrap">
+                            <span class="detect-value detect-merchant" id="card-merchant-val">--</span>
+                        </div>
+                    </div>
+
+                    <!-- Amount -->
+                    <div class="detect-item detect-item-amount">
+                        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                            <span class="detect-label">Amount</span>
+                            <span id="card-amount-status" class="detect-warning-pill" style="display: none;">
+                                <i class="fa-solid fa-circle-exclamation"></i> Please confirm amount
+                            </span>
+                        </div>
+                        <div class="detect-val-wrap">
+                            <span class="detect-value detect-amount" id="card-amount-val">₹0.00</span>
+                        </div>
+                    </div>
+
+                    <!-- Date & Time Row -->
+                    <div class="detect-grid-2">
+                        <div class="detect-item">
+                            <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                                <span class="detect-label">Date</span>
+                                <span id="card-date-status" class="detect-warning-pill" style="display: none;">
+                                    <i class="fa-solid fa-circle-exclamation"></i> Date required
+                                </span>
+                            </div>
+                            <div class="detect-val-wrap">
+                                <span class="detect-value" id="card-date-val">--</span>
+                            </div>
+                        </div>
+                        <div class="detect-item">
+                            <span class="detect-label">Time</span>
+                            <div class="detect-val-wrap">
+                                <span class="detect-value" id="card-time-val">--</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Category Row -->
+                    <div class="detect-item">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <span class="detect-label" style="margin-bottom: 0;">Category</span>
+                            <span id="card-category-status" class="category-status-pill"></span>
+                        </div>
+                        <div class="detect-val-wrap" id="card-category-display-wrap">
+                            <span class="detect-value" id="card-category-val">--</span>
+                        </div>
+                        <!-- Inline Category Quick Selector if needs selection -->
+                        <div id="card-category-quick-select-wrap" style="display: none; margin-top: 6px;">
+                            <select id="card-category-quick-select" class="select-clean" style="padding: 6px 10px; font-size: 0.8rem;">
+                                <option value="">-- Choose Category --</option>
+                                <option value="Food">Food & Dining</option>
+                                <option value="Transport">Transportation</option>
+                                <option value="Shopping">Shopping</option>
+                                <option value="Bills">Bills & Utilities</option>
+                                <option value="Entertainment">Entertainment</option>
+                                <option value="Health">Health & Fitness</option>
+                                <option value="Investment">Investment</option>
+                                <option value="Salary">Salary/Income</option>
+                                <option value="General">General</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- UTR -->
+                    <div class="detect-item" id="card-utr-wrap">
+                        <span class="detect-label">UTR / Reference ID</span>
+                        <div class="detect-val-wrap">
+                            <span class="detect-value detect-mono" id="card-utr-val">--</span>
+                        </div>
+                    </div>
+
+                    <!-- Card Actions -->
+                    <div class="detect-card-actions">
+                        <button type="button" class="btn-primary-purple btn-confirm-card" id="btn-card-confirm">
+                            <i class="fa-solid fa-check"></i> Confirm & Add
+                        </button>
+                        <button type="button" class="btn-cancel-clean btn-edit-card" id="btn-card-edit">
+                            <i class="fa-solid fa-pen-to-square"></i> Edit
+                        </button>
+                    </div>
                 </div>
 
-                <!-- Editable Form for Import Payment -->
-                <form id="import-payment-form" autocomplete="off">
-                    <!-- Temporary visible debug line (Requirement 7) -->
-                    <div id="import-debug-line" style="font-size: 0.85rem; color: #a78bfa; font-weight: 600; margin-bottom: 12px; padding: 6px 10px; background: rgba(167, 139, 250, 0.12); border-radius: 6px; border: 1px dashed rgba(167, 139, 250, 0.4); display: flex; align-items: center; gap: 6px;">
-                        <i class="fa-solid fa-magnifying-glass-dollar"></i>
-                        <span>Detected amount: <strong id="import-debug-detected-amount" style="color: #38bdf8;">--</strong></span>
+                <!-- ================= EDIT FORM VIEW (DETAILED EDITING) ================= -->
+                <form id="import-payment-form" class="import-edit-form" style="display: none;" autocomplete="off">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary);">
+                            <i class="fa-solid fa-sliders"></i> Edit Transaction Details
+                        </span>
+                        <button type="button" class="btn-text-action" id="btn-back-to-card">
+                            <i class="fa-solid fa-arrow-left"></i> Back to Card
+                        </button>
                     </div>
 
                     <!-- Amount & Type Row -->
@@ -1230,15 +1325,13 @@
                         <input type="text" id="import-merchant" class="input-clean" placeholder="e.g. Swiggy, Uber, Rent..." required />
                     </div>
 
-                    <!-- Category Selection (Highlight or Required Warning) -->
+                    <!-- Category Selection -->
                     <div class="form-group-clean" style="margin-bottom: 12px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
                             <label for="import-category" class="form-label-clean" style="margin-bottom: 0;">
                                 Category *
                             </label>
-                            <span id="import-category-status" class="category-status-pill">
-                                <!-- Populated dynamically: Detected vs Please Select -->
-                            </span>
+                            <span id="import-category-status" class="category-status-pill"></span>
                         </div>
                         <select id="import-category" class="select-clean" required>
                             <option value="">-- Select Category --</option>
@@ -1260,7 +1353,12 @@
                     <!-- Date & Time Row -->
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
                         <div class="form-group-clean">
-                            <label for="import-date" class="form-label-clean">Date *</label>
+                            <label for="import-date" class="form-label-clean">
+                                Date *
+                                <span id="import-date-hint" style="color: #F87171; font-size: 0.75rem; margin-left: 6px; display: none;">
+                                    <i class="fa-solid fa-circle-exclamation"></i> Date required
+                                </span>
+                            </label>
                             <input type="date" id="import-date" class="input-clean" required />
                         </div>
                         <div class="form-group-clean">
@@ -1293,10 +1391,34 @@
                             Cancel
                         </button>
                         <button type="submit" class="btn-primary-purple" id="btn-save-import">
-                            <i class="fa-solid fa-check"></i> Import & Save
+                            <i class="fa-solid fa-check"></i> Save Transaction
                         </button>
                     </div>
                 </form>
+
+                <!-- ================= DEVELOPER OCR DIAGNOSTIC DRAWER ================= -->
+                <div id="import-diagnostic-drawer" class="ocr-diagnostic-drawer" style="display: none;">
+                    <div class="diag-header">
+                        <span><i class="fa-solid fa-terminal"></i> OCR Diagnostic Inspector</span>
+                        <button type="button" class="btn-diag-close" id="btn-close-diagnostic">&times;</button>
+                    </div>
+                    <div class="diag-body">
+                        <div class="diag-summary-grid">
+                            <div>Provider: <strong id="diag-provider">--</strong></div>
+                            <div>Passes: <strong id="diag-passes">--</strong></div>
+                            <div>Amount Score: <strong id="diag-amount-score">--</strong></div>
+                            <div>Date Score: <strong id="diag-date-score">--</strong></div>
+                        </div>
+                        <div class="diag-section-title">Selected Values & Reasons</div>
+                        <pre class="diag-json" id="diag-selected-json"></pre>
+                        <div class="diag-section-title">Amount Candidates</div>
+                        <pre class="diag-json" id="diag-amount-candidates"></pre>
+                        <div class="diag-section-title">Date Candidates</div>
+                        <pre class="diag-json" id="diag-date-candidates"></pre>
+                        <div class="diag-section-title">Raw Extracted Text</div>
+                        <pre class="diag-json" id="diag-raw-text"></pre>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -1306,8 +1428,8 @@
 
     <!-- Chart.js and App Logic -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="js/paymentParser.js?v=2.2.0"></script>
-    <script src="app.js?v=2.2.0"></script>
+    <script src="js/paymentParser.js?v=3.0.0"></script>
+    <script src="app.js?v=3.0.0"></script>
 </body>
 
 </html>
