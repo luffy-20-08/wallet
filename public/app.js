@@ -40,12 +40,10 @@ const sessionAlertText = document.getElementById('session-alert-text');
 const logoutAllOtherBtn = document.getElementById('logout-all-other-btn');
 
 // DOM Elements: Summary Cards
-const balanceEl = document.getElementById('total-balance');
+const openingBalanceEl = document.getElementById('opening-balance');
+const closingBalanceEl = document.getElementById('closing-balance');
 const incomeEl = document.getElementById('total-income');
 const expenseEl = document.getElementById('total-expense');
-const savingsRateEl = document.getElementById('savings-rate');
-const savingsCirclePath = document.getElementById('savings-circle-path');
-const savingsRingText = document.getElementById('savings-ring-text');
 
 // DOM Elements: Month & Period Selector Bar
 const monthBarCurrentLabel = document.getElementById('month-bar-current-label');
@@ -58,10 +56,10 @@ const monthRibbon = document.getElementById('month-ribbon');
 const dashboardYearSelect = document.getElementById('dashboard-year-select');
 
 // DOM Elements: Card Subtitles
-const cardBalanceSubtitle = document.getElementById('card-balance-subtitle');
+const cardOpeningSubtitle = document.getElementById('card-opening-subtitle');
 const cardIncomeSubtitle = document.getElementById('card-income-subtitle');
 const cardExpenseSubtitle = document.getElementById('card-expense-subtitle');
-const cardSavingsSubtitle = document.getElementById('card-savings-subtitle');
+const cardClosingSubtitle = document.getElementById('card-closing-subtitle');
 
 // DOM Elements: Form
 const form = document.getElementById('transaction-form');
@@ -1123,15 +1121,38 @@ function getFilteredTransactions() {
 function updateValues() {
     const filtered = getFilteredTransactions();
 
+    // 1. Calculate Opening Balance
+    let openingBalance = 0;
+    if (selectedMonth !== 'lifetime') {
+        let startDate;
+        if (selectedDashboardDate) {
+            startDate = new Date(selectedDashboardDate + 'T00:00:00');
+        } else if (selectedMonth === 'all') {
+            startDate = new Date(selectedYear, 0, 1);
+        } else {
+            startDate = new Date(selectedYear, selectedMonth, 1);
+        }
+
+        const pastTransactions = transactions.filter(t => {
+            const tDate = new Date(t.date || t.createdAt);
+            return tDate.getTime() < startDate.getTime();
+        });
+
+        openingBalance = pastTransactions.reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+    }
+
     const amounts = filtered.map(t => t.amount);
-    const total = amounts.reduce((acc, item) => (acc += item), 0);
     const income = amounts.filter(item => item > 0).reduce((acc, item) => (acc += item), 0);
     const expense = Math.abs(amounts.filter(item => item < 0).reduce((acc, item) => (acc += item), 0));
 
+    // 2. Calculate Closing Balance
+    const closingBalance = openingBalance + income - expense;
+
     // Update Top Summary Cards
-    balanceEl.innerText = (total < 0 ? '-' : '') + formatCurrency(total);
-    incomeEl.innerText = '+' + formatCurrency(income);
-    expenseEl.innerText = '-' + formatCurrency(expense);
+    if(openingBalanceEl) openingBalanceEl.innerText = (openingBalance < 0 ? '-' : '') + formatCurrency(openingBalance);
+    if(closingBalanceEl) closingBalanceEl.innerText = (closingBalance < 0 ? '-' : '') + formatCurrency(closingBalance);
+    if(incomeEl) incomeEl.innerText = '+' + formatCurrency(income);
+    if(expenseEl) expenseEl.innerText = '-' + formatCurrency(expense);
 
     // Dynamic Card Subtitles reflecting the active month/period
     let periodText = '';
@@ -1146,8 +1167,8 @@ function updateValues() {
         periodText = `${MONTH_NAMES_SHORT[selectedMonth]} ${selectedYear}`;
     }
 
-    if (cardBalanceSubtitle) {
-        cardBalanceSubtitle.innerHTML = `<i class="fa-solid fa-calendar-check"></i> Net for ${periodText}`;
+    if (cardOpeningSubtitle) {
+        cardOpeningSubtitle.innerHTML = `<i class="fa-solid fa-clock-rotate-left"></i> Carried forward`;
     }
     if (cardIncomeSubtitle) {
         cardIncomeSubtitle.innerHTML = `<i class="fa-solid fa-arrow-up"></i> Income in ${periodText}`;
@@ -1155,19 +1176,8 @@ function updateValues() {
     if (cardExpenseSubtitle) {
         cardExpenseSubtitle.innerHTML = `<i class="fa-solid fa-arrow-down"></i> Expenses in ${periodText}`;
     }
-    if (cardSavingsSubtitle) {
-        cardSavingsSubtitle.innerHTML = `<i class="fa-solid fa-leaf"></i> Savings in ${periodText}`;
-    }
-
-    // Savings Rate Percentage & Circular SVG Progress
-    const savings = income - expense;
-    const savingsRate = income > 0 ? Math.round((savings / income) * 100) : 0;
-    const clampedSavings = Math.max(0, Math.min(100, savingsRate));
-
-    savingsRateEl.innerText = `${savingsRate}%`;
-    if (savingsRingText) savingsRingText.innerText = `${clampedSavings}%`;
-    if (savingsCirclePath) {
-        savingsCirclePath.setAttribute('stroke-dasharray', `${clampedSavings}, 100`);
+    if (cardClosingSubtitle) {
+        cardClosingSubtitle.innerHTML = `<i class="fa-solid fa-calendar-check"></i> Net for ${periodText}`;
     }
 
     // Render Sub-components
