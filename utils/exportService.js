@@ -449,7 +449,7 @@ function generatePDF(transactions, options = {}) {
             });
 
             // Modern Dark / Futuristic Palette
-            const COLOR_BG_DARK = '#0D0D10';
+            const COLOR_BG_PAGE = '#FFFFFF';
             const COLOR_CARD = '#17171B';
             const COLOR_PURPLE = '#A970FF';
             const COLOR_PURPLE_LIGHT = '#D8B4FE';
@@ -467,7 +467,7 @@ function generatePDF(transactions, options = {}) {
             // Draw full background page on current page
             function drawPageBackground() {
                 doc.save();
-                doc.rect(0, 0, pageWidth, pageHeight).fill(COLOR_BG_DARK);
+                doc.rect(0, 0, pageWidth, pageHeight).fill(COLOR_BG_PAGE);
                 doc.restore();
             }
 
@@ -480,14 +480,14 @@ function generatePDF(transactions, options = {}) {
             doc.roundedRect(margin, currentY, 4, 34, 2).fill(COLOR_PURPLE);
 
             // Brand Text
-            doc.font(fontBold).fontSize(18).fillColor(COLOR_TEXT);
+            doc.font(fontBold).fontSize(18).fillColor('#111827');
             doc.text('Wallet', margin + 12, currentY);
 
             doc.font(fontRegular).fontSize(9).fillColor(COLOR_MUTED);
             doc.text('Personal Finance & Expense Tracker', margin + 12, currentY + 20);
 
             // Right Header: Report Type & Period
-            doc.font(fontBold).fontSize(14).fillColor(COLOR_PURPLE_LIGHT);
+            doc.font(fontBold).fontSize(14).fillColor(COLOR_PURPLE);
             doc.text('TRANSACTION REPORT', margin, currentY + 2, { align: 'right', width: contentWidth });
 
             doc.font(fontRegular).fontSize(9).fillColor(COLOR_MUTED);
