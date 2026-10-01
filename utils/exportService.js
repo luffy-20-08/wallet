@@ -580,7 +580,7 @@ function generatePDF(transactions, options = {}) {
                 }
 
                 const isEven = idx % 2 === 0;
-                const rowBg = isEven ? '#121217' : '#17171D';
+                const rowBg = isEven ? '#FFFFFF' : '#F9FAFB';
                 const isExp = t.type === 'expense' || t.amount < 0;
 
                 // Row background
@@ -589,36 +589,36 @@ function generatePDF(transactions, options = {}) {
                 // Row bottom subtle border
                 doc.moveTo(margin, currentY + rowHeight)
                     .lineTo(margin + contentWidth, currentY + rowHeight)
-                    .strokeColor(COLOR_BORDER)
+                    .strokeColor('#E5E7EB')
                     .lineWidth(0.5)
                     .stroke();
 
                 let colX = margin + 8;
 
                 // Date
-                doc.font(fontRegular).fontSize(8).fillColor(COLOR_MUTED);
+                doc.font(fontRegular).fontSize(8).fillColor('#4B5563');
                 doc.text(formatDateISO(t.date || t.createdAt), colX, currentY + 6, { width: colWidths.date });
 
                 // Description
                 colX += colWidths.date;
-                doc.font(fontRegular).fontSize(8).fillColor(COLOR_TEXT);
+                doc.font(fontRegular).fontSize(8).fillColor('#111827');
                 const descText = String(t.text || 'Transaction').substring(0, 38);
                 doc.text(descText, colX, currentY + 6, { width: colWidths.desc, ellipsis: true });
 
                 // Category
                 colX += colWidths.desc;
-                doc.font(fontRegular).fontSize(8).fillColor(COLOR_MUTED);
+                doc.font(fontRegular).fontSize(8).fillColor('#4B5563');
                 const catLabel = getCategoryLabel(t.category);
                 doc.text(catLabel, colX, currentY + 6, { width: colWidths.category, ellipsis: true });
 
                 // Type
                 colX += colWidths.category;
-                doc.font(fontBold).fontSize(7.5).fillColor(isExp ? COLOR_CORAL : COLOR_TEAL);
+                doc.font(fontBold).fontSize(7.5).fillColor(isExp ? '#DE350B' : '#00875A');
                 doc.text(isExp ? 'Expense' : 'Income', colX, currentY + 6, { width: colWidths.type, align: 'center' });
 
                 // Amount
                 colX += colWidths.type;
-                doc.font(fontBold).fontSize(8.5).fillColor(isExp ? COLOR_CORAL : COLOR_TEAL);
+                doc.font(fontBold).fontSize(8.5).fillColor(isExp ? '#DE350B' : '#00875A');
                 const formattedAmt = (isExp ? '-' : '+') + formatCurrency(t.amount);
                 doc.text(formattedAmt, colX, currentY + 6, { width: colWidths.amount - 16, align: 'right' });
 
